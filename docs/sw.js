@@ -1,6 +1,6 @@
 // Guarda o app no aparelho para ele abrir sem internet.
 // Mude o número da versão quando trocar a lista de arquivos.
-const CACHE = 'coords-v3';
+const CACHE = 'coords-v4';
 const ARQUIVOS = [
   './',
   './index.html',
@@ -36,10 +36,17 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Responde com a cópia salva e atualiza a cópia pela rede para a próxima vez.
+// Páginas: busca a versão nova primeiro e usa a cópia salva só sem internet.
+// Outros arquivos: responde com a cópia salva e atualiza pela rede para a próxima vez.
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  if (req.mode === 'navigate') {
+    e.respondWith(caches.open(CACHE).then(cache => fetch(req, { cache: 'no-cache' })
+      .then(res => { if (res.ok) cache.put(req, res.clone()); return res; })
+      .catch(async () => (await cache.match(req, { ignoreSearch: true })) || Response.error())));
+    return;
+  }
   e.respondWith(caches.open(CACHE).then(async cache => {
     const salvo = await cache.match(req, { ignoreSearch: true });
     const rede = fetch(req).then(res => {
