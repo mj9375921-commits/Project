@@ -1,0 +1,1134 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Coords do Server</title>
+<meta name="description" content="Guarde bases, portais, minas e ilhas do server e converta coordenadas entre Overworld e Nether.">
+<meta name="theme-color" content="#10151F">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Coords">
+<link rel="preload" href="fonts/jersey10-latin.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+/* Layout: uma coluna de app (até 560px), barra de abas fixa embaixo, folhas que sobem de baixo. Tokens: ver DESIGN.md. */
+@font-face {
+  font-family: "Jersey 10";
+  src: url("fonts/jersey10-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+:root {
+  color-scheme: dark;
+  --bg: #10151F;
+  --surface: #182030;
+  --surface-2: #212B3F;
+  --line: #2A3448;
+  --edge: #6E7A95;
+  --text: #EEF2F8;
+  --text-dim: #A3AFC4;
+  --torch: #FFB938;
+  --torch-edge: #C4861C;
+  --on-torch: #241600;
+  --ow: #74C94F;
+  --nether: #FF6B57;
+  --end: #C7A2FF;
+  --danger: #FF7A70;
+  --toast-acao: #8A5300;
+  --scrim: rgb(4 7 12 / 0.72);
+  --shadow: rgb(0 0 0 / 0.45);
+  --dc: var(--text-dim);
+
+  --font-pixel: "Jersey 10", ui-monospace, "SF Mono", "Roboto Mono", monospace;
+  --font-text: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fs-12: 0.75rem;
+  --fs-14: 0.875rem;
+  --fs-16: 1rem;
+  --fs-20: 1.25rem;
+  --fs-28: 1.75rem;
+  --fs-40: 2.5rem;
+
+  --sp-4: 4px;
+  --sp-8: 8px;
+  --sp-16: 16px;
+  --sp-24: 24px;
+  --sp-40: 40px;
+  --sp-64: 64px;
+
+  --tap: 44px;
+  --campo-h: 52px;
+  --tabbar-h: 64px;
+  --relevo: inset 0 -3px 0 rgb(0 0 0 / 0.35), inset 0 2px 0 rgb(255 255 255 / 0.18);
+
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.d-ow { --dc: var(--ow); }
+.d-ne { --dc: var(--nether); }
+.d-end { --dc: var(--end); }
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html:has(dialog[open]) { overflow: hidden; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 var(--fs-16)/1.5 var(--font-text);
+  font-synthesis: none;
+  -webkit-tap-highlight-color: transparent;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px);
+  background: var(--bg);
+  z-index: 10;
+}
+h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { font-family: var(--font-pixel); font-weight: 400; line-height: 1; letter-spacing: 0.02em; text-wrap: balance; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--torch); outline-offset: 2px; }
+.ico { display: block; width: 20px; height: 20px; flex: none; }
+
+.wrap {
+  max-width: 560px;
+  margin-inline: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+/* Barra do topo */
+.appbar { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-16); padding-block: var(--sp-16) 0; }
+.logo { display: flex; align-items: center; gap: var(--sp-8); font-size: var(--fs-40); }
+.logo .ico { width: 30px; height: 30px; color: var(--torch); }
+
+main { padding-block: var(--sp-24) calc(var(--tabbar-h) + var(--sp-40)); }
+.tela { display: flex; flex-direction: column; gap: var(--sp-16); }
+.tela-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-16); min-height: var(--tap); }
+.tela-head h2 { font-size: var(--fs-28); }
+.contagem { color: var(--text-dim); }
+.dica-linha { font-size: var(--fs-14); color: var(--text-dim); }
+
+/* Botões */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-8);
+  min-height: var(--tap);
+  padding-block: var(--sp-8);
+  padding-inline: var(--sp-16);
+  border: 2px solid var(--edge);
+  border-radius: 2px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: 600 var(--fs-16)/1.2 var(--font-text);
+  text-align: center;
+  text-decoration: none;
+  box-shadow: var(--relevo);
+}
+.btn:active { transform: translateY(1px); box-shadow: none; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-primary { background: var(--torch); border-color: var(--torch-edge); color: var(--on-torch); }
+.btn-perigo { color: var(--danger); }
+.btn-block { width: 100%; }
+.acoes { display: flex; flex-direction: column; gap: var(--sp-8); }
+
+/* Campos */
+.txt {
+  width: 100%;
+  min-height: var(--tap);
+  padding-block: var(--sp-8);
+  padding-inline: var(--sp-16);
+  border: 2px solid var(--edge);
+  border-radius: 2px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: 400 var(--fs-16)/1.4 var(--font-text);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.txt:focus { outline: none; border-color: var(--torch); }
+.txt::placeholder, .num::placeholder { color: var(--text-dim); opacity: 1; }
+textarea.txt { resize: vertical; }
+
+.cell { display: flex; min-width: 0; }
+.num {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: var(--campo-h);
+  padding-block: 0;
+  padding-inline: var(--sp-8);
+  border: 2px solid var(--edge);
+  border-right: 0;
+  border-radius: 2px 0 0 2px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: 400 var(--fs-28)/1 var(--font-pixel);
+  font-variant-numeric: tabular-nums;
+}
+.num:focus { outline: none; }
+.pm {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--campo-h);
+  padding: 0;
+  border: 2px solid var(--edge);
+  border-radius: 0 2px 2px 0;
+  background: var(--surface);
+  color: var(--text-dim);
+}
+.cell:focus-within .num, .cell:focus-within .pm { border-color: var(--torch); }
+.eixo { font: 400 var(--fs-28)/1 var(--font-pixel); color: var(--text-dim); text-align: center; }
+
+/* Conversor */
+.conv { display: grid; grid-template-columns: var(--sp-24) minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-8); align-items: center; }
+.col-h { color: var(--dc); font: 400 var(--fs-20)/1 var(--font-pixel); letter-spacing: 0.04em; text-transform: uppercase; }
+.conv .num { background: color-mix(in srgb, var(--dc) 9%, var(--surface-2)); }
+.regra { font-size: var(--fs-14); color: var(--text-dim); }
+.regra strong { color: var(--text); font-weight: 600; }
+.aviso { display: flex; flex-direction: column; gap: var(--sp-16); padding: var(--sp-16); border: 2px solid var(--line); background: var(--surface); }
+
+/* Lista de locais */
+.busca { position: relative; }
+.busca .ico { position: absolute; left: var(--sp-16); top: 50%; transform: translateY(-50%); color: var(--text-dim); pointer-events: none; }
+.busca .txt { padding-left: calc(var(--sp-16) + 20px + var(--sp-8)); }
+.lista { list-style: none; margin: 0; padding: 0; }
+.lista > li + li { border-top: 1px solid var(--line); }
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-16);
+  width: 100%;
+  padding-block: var(--sp-16);
+  padding-inline: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+}
+button.item:active { background: var(--surface); }
+.tile {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  color: var(--dc);
+  background: color-mix(in srgb, var(--dc) 16%, var(--bg));
+}
+.item-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
+.item-nome { display: flex; align-items: baseline; gap: var(--sp-8); font-weight: 600; }
+.item-nome .nome { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-meta { font-size: var(--fs-14); color: var(--text-dim); }
+.dc { color: var(--dc); }
+.coords { display: flex; flex-wrap: wrap; column-gap: var(--sp-16); font: 400 var(--fs-28)/1 var(--font-pixel); font-variant-numeric: tabular-nums; }
+.coords .k { margin-right: var(--sp-4); font-size: var(--fs-20); color: var(--text-dim); }
+.item-conv { font-size: var(--fs-14); color: var(--dc); }
+.ja { flex: none; font-size: var(--fs-12); font-weight: 600; color: var(--text-dim); }
+.vazio { display: flex; flex-direction: column; gap: var(--sp-16); }
+.vazio h3 { font-size: var(--fs-28); }
+.vazio p { color: var(--text-dim); }
+.exemplo { display: flex; flex-direction: column; padding: var(--sp-8) var(--sp-16) 0; border: 2px dashed var(--line); }
+.exemplo-tag { font: 400 var(--fs-20)/1 var(--font-pixel); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-dim); }
+.enviar { display: flex; flex-direction: column; gap: var(--sp-8); padding-top: var(--sp-8); }
+
+/* Barra de abas */
+.tabbar {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 5;
+  border-top: 2px solid var(--line);
+  background: var(--surface);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+.tabbar-in { display: grid; grid-template-columns: 1fr 1fr; max-width: 560px; height: var(--tabbar-h); margin-inline: auto; }
+.tab {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  font-size: var(--fs-12);
+  font-weight: 600;
+}
+.tab[aria-current="page"] { color: var(--torch); }
+.tab[aria-current="page"]::before { content: ""; position: absolute; top: -2px; left: 30%; right: 30%; height: 4px; background: var(--torch); }
+
+/* Folhas (dialog) */
+dialog.sheet {
+  width: 100%;
+  max-width: 560px;
+  max-height: 92vh;
+  max-height: 92dvh;
+  margin: auto auto 0;
+  padding: 0;
+  border: 0;
+  border-radius: 8px 8px 0 0;
+  background: var(--surface);
+  color: var(--text);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+dialog.sheet[open] { animation: subir 0.2s ease-out; }
+dialog.sheet::backdrop { background: var(--scrim); }
+@keyframes subir { from { transform: translateY(var(--sp-24)); opacity: 0; } }
+.sheet-in {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-24);
+  padding-top: var(--sp-24);
+  padding-bottom: calc(var(--sp-24) + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.sheet-head { display: flex; align-items: flex-start; gap: var(--sp-16); }
+.sheet-head h2 { flex: 1; min-width: 0; font-size: var(--fs-28); overflow-wrap: anywhere; }
+.sheet-tit { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
+.sub { font-size: var(--fs-14); color: var(--text-dim); }
+.btn-x {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: var(--tap);
+  height: var(--tap);
+  margin-top: calc(-1 * var(--sp-8));
+  margin-right: calc(-1 * var(--sp-8));
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+}
+.sheet-acoes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-8); }
+.span-2 { grid-column: 1 / -1; }
+.big { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-8); }
+.big > div { display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--sp-8) var(--sp-8) var(--sp-16); background: var(--surface-2); }
+.big .k { font-size: var(--fs-12); font-weight: 600; color: var(--text-dim); }
+.big .v { font: 400 var(--fs-40)/1 var(--font-pixel); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.big .v.longo { font-size: var(--fs-28); }
+.conv-bloco { display: flex; flex-direction: column; gap: var(--sp-8); padding: var(--sp-16); border: 2px solid var(--dc); background: color-mix(in srgb, var(--dc) 10%, var(--surface)); }
+.conv-tit { font: 400 var(--fs-20)/1 var(--font-pixel); letter-spacing: 0.04em; text-transform: uppercase; color: var(--dc); }
+.nota { white-space: pre-wrap; overflow-wrap: anywhere; }
+.meta { font-size: var(--fs-12); color: var(--text-dim); }
+.mensagem { font-size: var(--fs-14); }
+
+/* Formulário */
+.campo { display: flex; flex-direction: column; gap: var(--sp-8); min-width: 0; margin: 0; padding: 0; border: 0; }
+.campo > label, .campo > legend { padding: 0; font-size: var(--fs-14); font-weight: 600; color: var(--text-dim); }
+fieldset.campo > legend { margin-bottom: var(--sp-8); }
+.opcional { font-weight: 400; }
+.opcoes { display: grid; gap: var(--sp-8); }
+.tipos { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
+.dims { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.opt { position: relative; display: block; }
+.opt input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.opt-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  min-height: 64px;
+  padding: var(--sp-8) var(--sp-4);
+  border: 2px solid var(--line);
+  border-radius: 2px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: var(--fs-12);
+  font-weight: 600;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.dims .opt-box { min-height: var(--tap); font-size: var(--fs-14); }
+.opt input:checked + .opt-box { border-color: var(--torch); color: var(--text); background: color-mix(in srgb, var(--torch) 14%, var(--surface-2)); }
+.dims .opt input:checked + .opt-box { border-color: var(--dc); color: var(--dc); background: color-mix(in srgb, var(--dc) 8%, var(--surface-2)); }
+.opt input:focus-visible + .opt-box { outline: 3px solid var(--torch); outline-offset: 2px; }
+.xyz { display: grid; grid-template-columns: var(--sp-24) minmax(0, 1fr); gap: var(--sp-8); align-items: center; }
+.previa { font-size: var(--fs-14); color: var(--dc); }
+.erro { font-size: var(--fs-14); color: var(--danger); }
+
+/* Aviso rápido */
+.toast {
+  position: fixed;
+  z-index: 20;
+  left: max(16px, env(safe-area-inset-left, 0px));
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom, 0px) + var(--sp-8));
+  max-width: 528px;
+  min-height: var(--tap);
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-8);
+  padding-block: var(--sp-4);
+  padding-left: var(--sp-16);
+  padding-right: var(--sp-4);
+  border-radius: 2px;
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 600;
+  box-shadow: 0 var(--sp-8) var(--sp-24) var(--shadow);
+}
+.toast-btn {
+  flex: none;
+  min-height: var(--tap);
+  padding-inline: var(--sp-16);
+  border: 0;
+  background: none;
+  color: var(--toast-acao);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.toast-btn:focus-visible { outline-color: var(--toast-acao); outline-offset: -3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<header class="appbar wrap">
+  <h1 class="logo"><span data-ico="pin"></span>Coords</h1>
+  <button type="button" class="btn btn-primary" id="btn-instalar" hidden>Instalar app</button>
+</header>
+
+<main class="wrap">
+  <section class="tela" id="tela-conversor" aria-labelledby="h-conversor">
+    <div class="tela-head">
+      <h2 id="h-conversor">Conversor</h2>
+    </div>
+    <p class="dica-linha">Digite de um lado e o outro lado calcula sozinho.</p>
+    <div class="conv">
+      <span></span>
+      <span class="col-h d-ow">Overworld</span>
+      <span class="col-h d-ne">Nether</span>
+
+      <span class="eixo" aria-hidden="true">X</span>
+      <div class="cell d-ow"><input class="num" id="ow-x" inputmode="numeric" autocomplete="off" aria-label="X no Overworld"><button type="button" class="pm" data-alvo="ow-x" aria-label="Trocar o sinal do X no Overworld"><span data-ico="pm"></span></button></div>
+      <div class="cell d-ne"><input class="num" id="ne-x" inputmode="numeric" autocomplete="off" aria-label="X no Nether"><button type="button" class="pm" data-alvo="ne-x" aria-label="Trocar o sinal do X no Nether"><span data-ico="pm"></span></button></div>
+
+      <span class="eixo" aria-hidden="true">Y</span>
+      <div class="cell d-ow"><input class="num" id="ow-y" inputmode="numeric" autocomplete="off" aria-label="Y no Overworld"><button type="button" class="pm" data-alvo="ow-y" aria-label="Trocar o sinal do Y no Overworld"><span data-ico="pm"></span></button></div>
+      <div class="cell d-ne"><input class="num" id="ne-y" inputmode="numeric" autocomplete="off" aria-label="Y no Nether"><button type="button" class="pm" data-alvo="ne-y" aria-label="Trocar o sinal do Y no Nether"><span data-ico="pm"></span></button></div>
+
+      <span class="eixo" aria-hidden="true">Z</span>
+      <div class="cell d-ow"><input class="num" id="ow-z" inputmode="numeric" autocomplete="off" aria-label="Z no Overworld"><button type="button" class="pm" data-alvo="ow-z" aria-label="Trocar o sinal do Z no Overworld"><span data-ico="pm"></span></button></div>
+      <div class="cell d-ne"><input class="num" id="ne-z" inputmode="numeric" autocomplete="off" aria-label="Z no Nether"><button type="button" class="pm" data-alvo="ne-z" aria-label="Trocar o sinal do Z no Nether"><span data-ico="pm"></span></button></div>
+    </div>
+    <p class="regra"><strong>Nether = Overworld ÷ 8</strong> no X e no Z. O Y não muda. Dá pra colar as coords inteiras, tipo “120 64 -340”.</p>
+    <div class="acoes">
+      <button type="button" class="btn btn-primary btn-block" id="btn-salvar-conv">Salvar como local</button>
+      <button type="button" class="btn btn-block" id="btn-limpar">Limpar</button>
+    </div>
+    <aside class="aviso" id="dica-ios" hidden>
+      <p><strong>Instale no iPhone:</strong> toque em Compartilhar e depois em “Adicionar à Tela de Início”.</p>
+      <button type="button" class="btn" id="dica-ios-ok">Entendi</button>
+    </aside>
+  </section>
+
+  <section class="tela" id="tela-locais" aria-labelledby="h-locais" hidden>
+    <div class="tela-head">
+      <h2 id="h-locais">Locais <span class="contagem" id="contagem"></span></h2>
+      <button type="button" class="btn btn-primary" id="btn-novo"><span data-ico="mais"></span>Novo</button>
+    </div>
+    <div class="busca" id="busca-box">
+      <span data-ico="busca"></span>
+      <input type="search" class="txt" id="busca" placeholder="Buscar por nome ou tipo" aria-label="Buscar locais" autocomplete="off" enterkeyhint="search">
+    </div>
+    <ul class="lista" id="lista"></ul>
+    <p class="dica-linha" id="sem-resultado" hidden></p>
+    <div class="vazio" id="vazio" hidden>
+      <h3>Nenhum local salvo ainda</h3>
+      <p>Salve bases, portais, minas e ilhas. Cada local mostra as coordenadas no Overworld e no Nether.</p>
+      <div class="exemplo" aria-hidden="true"><span class="exemplo-tag">Exemplo</span><ul class="lista" id="exemplo"></ul></div>
+      <button type="button" class="btn btn-primary btn-block" id="btn-novo-vazio">Adicionar o primeiro local</button>
+    </div>
+    <div class="enviar" id="enviar-todos" hidden>
+      <button type="button" class="btn btn-block" id="btn-enviar-todos">Enviar todos os locais</button>
+      <p class="dica-linha">Manda pra um amigo ou guarda como backup.</p>
+    </div>
+  </section>
+  <noscript><p>Ative o JavaScript para usar o Coords.</p></noscript>
+</main>
+
+<nav class="tabbar" aria-label="Telas do app">
+  <div class="tabbar-in">
+    <button type="button" class="tab" data-aba="conversor" aria-current="page"><span data-ico="troca"></span>Conversor</button>
+    <button type="button" class="tab" data-aba="locais" aria-current="false"><span data-ico="pin"></span>Locais</button>
+  </div>
+</nav>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden>
+  <span id="toast-msg"></span>
+  <button type="button" class="toast-btn" id="toast-acao" hidden></button>
+</div>
+
+<dialog class="sheet" id="dlg-local" aria-labelledby="dl-nome">
+  <div class="sheet-in">
+    <div class="sheet-head">
+      <span class="tile" id="dl-tile"></span>
+      <div class="sheet-tit">
+        <h2 id="dl-nome"></h2>
+        <p class="sub" id="dl-sub"></p>
+      </div>
+      <button type="button" class="btn-x" data-fechar aria-label="Fechar"><span data-ico="fechar"></span></button>
+    </div>
+    <div class="big" id="dl-coords"></div>
+    <div class="conv-bloco" id="dl-conv"></div>
+    <p class="nota" id="dl-nota" hidden></p>
+    <p class="meta" id="dl-data"></p>
+    <div class="sheet-acoes">
+      <button type="button" class="btn btn-primary span-2" id="dl-copiar">Copiar coordenadas</button>
+      <button type="button" class="btn" id="dl-compartilhar">Compartilhar</button>
+      <button type="button" class="btn" id="dl-editar">Editar</button>
+      <button type="button" class="btn btn-perigo span-2" id="dl-apagar">Apagar local</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="sheet" id="dlg-form" aria-labelledby="f-titulo">
+  <form class="sheet-in" id="form-local" novalidate>
+    <div class="sheet-head">
+      <h2 id="f-titulo">Novo local</h2>
+      <button type="button" class="btn-x" data-fechar aria-label="Fechar"><span data-ico="fechar"></span></button>
+    </div>
+    <div class="campo">
+      <label for="f-nome">Nome</label>
+      <input class="txt" id="f-nome" name="nome" maxlength="40" autocomplete="off" placeholder="Ex.: Base do Davi" aria-describedby="f-erro-nome">
+      <p class="erro" id="f-erro-nome" hidden>Dê um nome para o local.</p>
+    </div>
+    <fieldset class="campo">
+      <legend>Tipo</legend>
+      <div class="opcoes tipos" id="f-tipos"></div>
+    </fieldset>
+    <fieldset class="campo">
+      <legend>Dimensão</legend>
+      <div class="opcoes dims" id="f-dims"></div>
+    </fieldset>
+    <fieldset class="campo">
+      <legend>Coordenadas</legend>
+      <div class="xyz">
+        <label class="eixo" for="f-x">X</label>
+        <div class="cell"><input class="num" id="f-x" inputmode="numeric" autocomplete="off" aria-describedby="f-erro-coords"><button type="button" class="pm" data-alvo="f-x" aria-label="Trocar o sinal do X"><span data-ico="pm"></span></button></div>
+        <label class="eixo" for="f-y">Y</label>
+        <div class="cell"><input class="num" id="f-y" inputmode="numeric" autocomplete="off" placeholder="opcional"><button type="button" class="pm" data-alvo="f-y" aria-label="Trocar o sinal do Y"><span data-ico="pm"></span></button></div>
+        <label class="eixo" for="f-z">Z</label>
+        <div class="cell"><input class="num" id="f-z" inputmode="numeric" autocomplete="off" aria-describedby="f-erro-coords"><button type="button" class="pm" data-alvo="f-z" aria-label="Trocar o sinal do Z"><span data-ico="pm"></span></button></div>
+      </div>
+      <p class="previa" id="f-previa"></p>
+      <p class="erro" id="f-erro-coords" hidden>Preencha o X e o Z.</p>
+    </fieldset>
+    <div class="campo">
+      <label for="f-nota">Nota <span class="opcional">(opcional)</span></label>
+      <textarea class="txt" id="f-nota" maxlength="140" rows="2" placeholder="Ex.: entrada pela caverna"></textarea>
+    </div>
+    <div class="sheet-acoes">
+      <button type="submit" class="btn btn-primary span-2">Salvar local</button>
+      <button type="button" class="btn span-2" data-fechar>Cancelar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="sheet" id="dlg-share" aria-labelledby="sh-titulo">
+  <div class="sheet-in">
+    <div class="sheet-head">
+      <h2 id="sh-titulo">Compartilhar</h2>
+      <button type="button" class="btn-x" data-fechar aria-label="Fechar"><span data-ico="fechar"></span></button>
+    </div>
+    <p class="dica-linha">Mande esta mensagem. O link abre os locais no app de quem receber.</p>
+    <textarea class="txt mensagem" id="sh-texto" rows="7" readonly aria-label="Mensagem para compartilhar"></textarea>
+    <div class="sheet-acoes">
+      <a class="btn btn-primary span-2" id="sh-whats" href="https://wa.me/" target="_blank" rel="noopener">Enviar no WhatsApp</a>
+      <button type="button" class="btn span-2" id="sh-copiar">Copiar mensagem</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="sheet" id="dlg-convite" aria-labelledby="cv-titulo">
+  <div class="sheet-in">
+    <div class="sheet-head">
+      <h2 id="cv-titulo">Locais recebidos</h2>
+      <button type="button" class="btn-x" data-fechar aria-label="Fechar"><span data-ico="fechar"></span></button>
+    </div>
+    <p id="cv-texto"></p>
+    <ul class="lista" id="cv-lista"></ul>
+    <div class="sheet-acoes">
+      <button type="button" class="btn btn-primary span-2" id="cv-adicionar" autofocus>Adicionar</button>
+      <button type="button" class="btn span-2" data-fechar>Agora não</button>
+    </div>
+  </div>
+</dialog>
+
+<script>
+(() => {
+'use strict';
+
+// Ícones em pixel (grade 10x10). "#" = cheio, "+" = meio apagado.
+const ICONES = {
+  pin: ['...####...', '.########.', '.###..###.', '###....###', '###....###', '.###..###.', '.########.', '..######..', '...####...', '....##....'],
+  troca: ['..##......', '.####.....', '######....', '..##..##..', '..##..##..', '..##..##..', '..##..##..', '....######', '.....####.', '......##..'],
+  mais: ['..........', '....##....', '....##....', '....##....', '.########.', '.########.', '....##....', '....##....', '....##....', '..........'],
+  fechar: ['..........', '.##....##.', '.###..###.', '..######..', '...####...', '...####...', '..######..', '.###..###.', '.##....##.', '..........'],
+  busca: ['.####.....', '#....#....', '#....#....', '#....#....', '#....#....', '.####.....', '.....##...', '......##..', '.......##.', '........##'],
+  pm: ['....##....', '....##....', '..######..', '..######..', '....##....', '....##....', '..........', '..######..', '..######..', '..........'],
+  base: ['....##....', '...####...', '..######..', '.########.', '##########', '.########.', '.###..###.', '.###..###.', '.###..###.', '.###..###.'],
+  portal: ['.########.', '.#++++++#.', '.#++++++#.', '.#++++++#.', '.#++++++#.', '.#++++++#.', '.#++++++#.', '.#++++++#.', '.#++++++#.', '.########.'],
+  mina: ['.########.', '##......##', '#...##...#', '....##....', '....##....', '....##....', '....##....', '....##....', '....##....', '....##....'],
+  ilha: ['.####.###.', '#...###..#', '....##....', '....##....', '.....##...', '.....##...', '.....##...', '..#######.', '.#########', '++++++++++'],
+  vila: ['....##....', '...####...', '..######..', '..######..', '..######..', '.########.', '##########', '..........', '....##....', '..........'],
+  fazenda: ['....##....', '...#..#...', '..#.##.#..', '...#..#...', '..#.##.#..', '...#..#...', '....##....', '....##....', '....##....', '....##....'],
+  fortaleza: ['#.#.##.#.#', '##########', '.########.', '.########.', '.###..###.', '.###..###.', '.##....##.', '.##....##.', '.##....##.', '.##....##.'],
+  outro: ['##........', '########..', '#########.', '########..', '#######...', '##........', '##........', '##........', '##........', '##........'],
+};
+
+const TIPOS = {
+  base: { nome: 'Base', ico: 'base' },
+  portal: { nome: 'Portal', ico: 'portal' },
+  mina: { nome: 'Mina', ico: 'mina' },
+  ilha: { nome: 'Ilha', ico: 'ilha' },
+  vila: { nome: 'Vila', ico: 'vila' },
+  fazenda: { nome: 'Fazenda', ico: 'fazenda' },
+  fortaleza: { nome: 'Fortaleza', ico: 'fortaleza' },
+  outro: { nome: 'Outro', ico: 'outro' },
+};
+const DIMS = {
+  overworld: { nome: 'Overworld', cls: 'd-ow', curto: 'o' },
+  nether: { nome: 'Nether', cls: 'd-ne', curto: 'n' },
+  end: { nome: 'End', cls: 'd-end', curto: 'e' },
+};
+const DIM_CURTO = { o: 'overworld', n: 'nether', e: 'end' };
+const MAX_XZ = 30000000; // borda do mundo
+const MAX_Y = 4096;
+const CHAVE = { locais: 'coords.locais.v1', conv: 'coords.conversor.v1', aba: 'coords.aba', dicaIos: 'coords.dica-ios' };
+const APP_URL = location.origin + location.pathname;
+
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const tem = (obj, k) => Object.prototype.hasOwnProperty.call(obj, k);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const semAcento = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+function svg(nome) {
+  let cheio = '', meio = '';
+  ICONES[nome].forEach((linha, y) => {
+    linha.replace(/#+|\++/g, (m, x) => {
+      const d = `M${x} ${y}h${m.length}v1h-${m.length}z`;
+      if (m[0] === '#') cheio += d; else meio += d;
+      return m;
+    });
+  });
+  return `<svg class="ico" viewBox="0 0 10 10" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="currentColor" d="${cheio}"/>${meio ? `<path fill="currentColor" opacity=".4" d="${meio}"/>` : ''}</svg>`;
+}
+
+// ---------- Armazenamento no aparelho ----------
+function ler(k) { try { return localStorage.getItem(k); } catch { return null; } }
+function gravar(k, v) { try { localStorage.setItem(k, v); return true; } catch { return false; } }
+function storageFunciona() {
+  try { localStorage.setItem('coords.teste', '1'); localStorage.removeItem('coords.teste'); return true; } catch { return false; }
+}
+let soMemoria = !storageFunciona();
+
+function novoId() {
+  try { return crypto.randomUUID(); } catch { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
+}
+function inteiro(v, max) {
+  return typeof v === 'number' && Number.isFinite(v) ? Math.max(-max, Math.min(max, Math.floor(v))) : null;
+}
+// Todo local passa por aqui: o que vem do aparelho e o que chega por link.
+function limpar(o) {
+  if (!o || typeof o !== 'object') return null;
+  const nome = String(o.nome ?? '').trim().slice(0, 40);
+  const x = inteiro(o.x, MAX_XZ), z = inteiro(o.z, MAX_XZ);
+  if (!nome || x === null || z === null) return null;
+  return {
+    id: typeof o.id === 'string' && o.id ? o.id.slice(0, 64) : novoId(),
+    nome,
+    tipo: tem(TIPOS, o.tipo) ? o.tipo : 'outro',
+    dim: tem(DIMS, o.dim) ? o.dim : 'overworld',
+    x,
+    y: inteiro(o.y, MAX_Y),
+    z,
+    nota: String(o.nota ?? '').trim().slice(0, 140),
+    em: typeof o.em === 'number' && Number.isFinite(o.em) ? o.em : Date.now(),
+  };
+}
+function carregar() {
+  try {
+    const v = JSON.parse(ler(CHAVE.locais) || '[]');
+    return Array.isArray(v) ? v.map(limpar).filter(Boolean) : [];
+  } catch { return []; }
+}
+let locais = carregar();
+
+// Lê a lista salva logo antes de gravar, para não apagar o que outra aba do app salvou.
+function mudar(fn) {
+  const lista = soMemoria ? locais.slice() : carregar();
+  fn(lista);
+  if (!soMemoria && !gravar(CHAVE.locais, JSON.stringify(lista))) {
+    soMemoria = true;
+    setTimeout(avisoSemMemoria, 2800);
+  }
+  locais = lista;
+  renderLista();
+}
+function avisoSemMemoria() { toast('Este navegador não deixa o app guardar dados. Os locais somem quando você fechar.'); }
+
+// ---------- Coordenadas ----------
+// Aceita "120", "-340", "120 64 -340", "120, 64, -340" e "120.5 / 64 / -340.3" (decimais viram o bloco).
+function numeros(txt) {
+  return (String(txt).replace(/[−‒–—]/g, '-').match(/-?\d+(?:\.\d+)?/g) || []).map(n => Math.floor(Number(n)));
+}
+function numero(txt) { const n = numeros(txt); return n.length ? n[0] : null; }
+const paraNether = v => Math.floor(v / 8);
+const paraOverworld = v => v * 8;
+function outroLado(l) {
+  if (l.dim === 'overworld') return { dim: 'nether', x: paraNether(l.x), y: l.y, z: paraNether(l.z) };
+  if (l.dim === 'nether') return { dim: 'overworld', x: paraOverworld(l.x), y: l.y, z: paraOverworld(l.z) };
+  return null;
+}
+function coordsHTML(x, y, z) {
+  const g = (k, v) => `<span><span class="k">${k}</span>${v}</span>`;
+  return g('X', x) + (y === null ? '' : g('Y', y)) + g('Z', z);
+}
+const coordsTexto = (x, y, z) => `X ${x}${y === null ? '' : ` Y ${y}`} Z ${z}`;
+const coordsCopia = l => (l.y === null ? `X ${l.x} Z ${l.z}` : `${l.x} ${l.y} ${l.z}`);
+
+// ---------- Aviso rápido ----------
+const toastEl = $('#toast'), toastMsg = $('#toast-msg'), toastBtn = $('#toast-acao');
+let toastTimer = 0, toastFn = null;
+function toast(msg, acao, fn) {
+  clearTimeout(toastTimer);
+  toastEl.hidden = false;
+  toastMsg.textContent = msg;
+  toastFn = fn || null;
+  toastBtn.hidden = !acao;
+  toastBtn.textContent = acao || '';
+  toastTimer = setTimeout(fecharToast, acao ? 6000 : 2600);
+}
+function fecharToast() { clearTimeout(toastTimer); toastEl.hidden = true; toastFn = null; }
+toastBtn.addEventListener('click', () => { const fn = toastFn; fecharToast(); if (fn) fn(); });
+
+function retorno(botao, texto) {
+  if (!botao.dataset.texto) botao.dataset.texto = botao.textContent;
+  botao.textContent = texto;
+  clearTimeout(botao._timer);
+  botao._timer = setTimeout(() => { botao.textContent = botao.dataset.texto; }, 1600);
+}
+async function copiarTexto(t) {
+  try { await navigator.clipboard.writeText(t); return true; } catch { /* tenta o jeito antigo */ }
+  try {
+    const a = document.createElement('textarea');
+    a.value = t;
+    a.setAttribute('readonly', '');
+    a.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    (document.querySelector('dialog[open]') || document.body).append(a);
+    a.select();
+    a.setSelectionRange(0, t.length);
+    const ok = document.execCommand('copy');
+    a.remove();
+    return ok;
+  } catch { return false; }
+}
+
+// ---------- Abas ----------
+function irPara(aba) {
+  $('#tela-conversor').hidden = aba !== 'conversor';
+  $('#tela-locais').hidden = aba !== 'locais';
+  $$('.tab').forEach(t => t.setAttribute('aria-current', t.dataset.aba === aba ? 'page' : 'false'));
+  gravar(CHAVE.aba, aba);
+  window.scrollTo(0, 0);
+}
+$$('.tab').forEach(t => t.addEventListener('click', () => irPara(t.dataset.aba)));
+
+// ---------- Campos de número ----------
+function prepararNumero(campo, aoMudar) {
+  campo.addEventListener('focus', () => {
+    if (campo.dataset.manter) { delete campo.dataset.manter; return; }
+    requestAnimationFrame(() => { try { campo.select(); } catch { /* sem seleção */ } });
+  });
+  campo.addEventListener('input', () => aoMudar(campo));
+  campo.addEventListener('blur', () => {
+    if (campo.value.trim() === '') return;
+    const v = numero(campo.value);
+    const novo = v === null ? '' : String(v);
+    if (novo !== campo.value) { campo.value = novo; aoMudar(campo); }
+  });
+}
+function distribuir(campos, n) {
+  const [x, y, z] = n.length >= 3 ? n : [n[0], null, n[1]];
+  campos.x.value = String(x);
+  campos.y.value = y === null ? '' : String(y);
+  campos.z.value = String(z);
+}
+// O botão ± não tira o foco do campo, para o teclado não fechar.
+document.addEventListener('pointerdown', e => { if (e.target.closest('.pm')) e.preventDefault(); });
+document.addEventListener('mousedown', e => { if (e.target.closest('.pm')) e.preventDefault(); });
+document.addEventListener('click', e => {
+  const b = e.target.closest('.pm');
+  if (!b) return;
+  const campo = document.getElementById(b.dataset.alvo);
+  const v = numero(campo.value);
+  campo.value = v === null ? (campo.value.trim() === '-' ? '' : '-') : String(-v);
+  if (document.activeElement !== campo) { campo.dataset.manter = '1'; campo.focus(); }
+  const fim = campo.value.length;
+  try { campo.setSelectionRange(fim, fim); } catch { /* campo sem cursor */ }
+  campo.dispatchEvent(new Event('input', { bubbles: true }));
+});
+
+// ---------- Conversor ----------
+const CONV = {
+  ow: { x: $('#ow-x'), y: $('#ow-y'), z: $('#ow-z') },
+  ne: { x: $('#ne-x'), y: $('#ne-y'), z: $('#ne-z') },
+};
+// Lado onde a pessoa digitou X ou Z por último. É a dimensão usada em "Salvar como local".
+let ladoConv = 'ow';
+// Converte só o eixo que mudou, para não estragar o número exato que a pessoa digitou nos outros eixos.
+function converterEixo(lado, k) {
+  const v = numero(CONV[lado][k].value);
+  let r = '';
+  if (v !== null) r = String(k === 'y' ? v : (lado === 'ow' ? paraNether : paraOverworld)(Math.max(-MAX_XZ, Math.min(MAX_XZ, v))));
+  CONV[lado === 'ow' ? 'ne' : 'ow'][k].value = r;
+  if (k !== 'y') ladoConv = lado;
+}
+const valoresConv = lado => ({ x: CONV[lado].x.value, y: CONV[lado].y.value, z: CONV[lado].z.value });
+function guardarConv() { gravar(CHAVE.conv, JSON.stringify({ lado: ladoConv, ow: valoresConv('ow'), ne: valoresConv('ne') })); }
+for (const lado of ['ow', 'ne']) {
+  for (const k of ['x', 'y', 'z']) {
+    prepararNumero(CONV[lado][k], campo => {
+      const n = numeros(campo.value);
+      if (n.length >= 2) {
+        distribuir(CONV[lado], n);
+        for (const e of ['x', 'y', 'z']) converterEixo(lado, e);
+      } else {
+        converterEixo(lado, k);
+      }
+      guardarConv();
+    });
+  }
+}
+function restaurarConv() {
+  let s = null;
+  try { s = JSON.parse(ler(CHAVE.conv) || 'null'); } catch { s = null; }
+  if (s && s.ow && s.ne) {
+    for (const lado of ['ow', 'ne']) for (const k of ['x', 'y', 'z']) CONV[lado][k].value = numero(s[lado][k]) ?? '';
+    ladoConv = s.lado === 'ne' ? 'ne' : 'ow';
+    return;
+  }
+  // Primeira vez: um exemplo, para a tela já mostrar a conversão.
+  CONV.ow.x.value = '800';
+  CONV.ow.y.value = '64';
+  CONV.ow.z.value = '-240';
+  for (const k of ['x', 'y', 'z']) converterEixo('ow', k);
+}
+$('#btn-limpar').addEventListener('click', () => {
+  for (const lado of ['ow', 'ne']) for (const k of ['x', 'y', 'z']) CONV[lado][k].value = '';
+  ladoConv = 'ow';
+  guardarConv();
+  CONV.ow.x.focus();
+});
+$('#btn-salvar-conv').addEventListener('click', () => {
+  const c = CONV[ladoConv];
+  abrirForm(null, { dim: ladoConv === 'ow' ? 'overworld' : 'nether', x: numero(c.x.value), y: numero(c.y.value), z: numero(c.z.value) });
+});
+
+// ---------- Lista de locais ----------
+function itemHTML(l, botao = true, extra = '') {
+  const d = DIMS[l.dim], o = outroLado(l);
+  const abre = botao ? `<button type="button" class="item" data-id="${esc(l.id)}">` : '<div class="item">';
+  return `<li>${abre}
+<span class="tile ${d.cls}">${svg(TIPOS[l.tipo].ico)}</span>
+<span class="item-corpo">
+<span class="item-nome"><span class="nome">${esc(l.nome)}</span>${extra}</span>
+<span class="item-meta"><span class="dc ${d.cls}">${d.nome}</span> · ${TIPOS[l.tipo].nome}</span>
+<span class="coords">${coordsHTML(l.x, l.y, l.z)}</span>
+${o ? `<span class="item-conv ${DIMS[o.dim].cls}">No ${DIMS[o.dim].nome}: ${coordsTexto(o.x, o.y, o.z)}</span>` : ''}
+</span>${botao ? '</button>' : '</div>'}</li>`;
+}
+function renderLista() {
+  const termo = $('#busca').value.trim();
+  const q = semAcento(termo);
+  const visiveis = q
+    ? locais.filter(l => semAcento([l.nome, TIPOS[l.tipo].nome, DIMS[l.dim].nome, l.nota].join(' ')).includes(q))
+    : locais;
+  $('#lista').innerHTML = visiveis.map(l => itemHTML(l)).join('');
+  $('#contagem').textContent = locais.length ? String(locais.length) : '';
+  $('#vazio').hidden = locais.length > 0;
+  $('#busca-box').hidden = locais.length === 0;
+  $('#enviar-todos').hidden = locais.length === 0;
+  const sem = $('#sem-resultado');
+  sem.hidden = !(locais.length && !visiveis.length);
+  sem.textContent = sem.hidden ? '' : `Nenhum local com “${termo}”.`;
+}
+$('#busca').addEventListener('input', renderLista);
+$('#lista').addEventListener('click', e => { const b = e.target.closest('.item'); if (b) abrirLocal(b.dataset.id); });
+$('#exemplo').innerHTML = itemHTML({ id: 'exemplo', nome: 'Portal da vila', tipo: 'portal', dim: 'overworld', x: 1032, y: 70, z: -456, nota: '', em: 0 }, false);
+
+// ---------- Detalhe de um local ----------
+const dlgLocal = $('#dlg-local');
+let abertoId = null;
+const localAberto = () => locais.find(l => l.id === abertoId);
+function abrirLocal(id) {
+  const l = locais.find(x => x.id === id);
+  if (!l) return;
+  abertoId = id;
+  const d = DIMS[l.dim], o = outroLado(l);
+  const tile = $('#dl-tile');
+  tile.className = `tile ${d.cls}`;
+  tile.innerHTML = svg(TIPOS[l.tipo].ico);
+  $('#dl-nome').textContent = l.nome;
+  $('#dl-sub').innerHTML = `<span class="dc ${d.cls}">${d.nome}</span> · ${TIPOS[l.tipo].nome}`;
+  $('#dl-coords').innerHTML = [['X', l.x], ['Y', l.y], ['Z', l.z]].map(([k, v]) => {
+    const t = v === null ? '–' : String(v);
+    return `<div><span class="k">${k}</span><span class="v${t.length > 5 ? ' longo' : ''}">${t}</span></div>`;
+  }).join('');
+  const conv = $('#dl-conv');
+  if (o) {
+    conv.className = `conv-bloco ${DIMS[o.dim].cls}`;
+    conv.innerHTML = `<span class="conv-tit">No ${DIMS[o.dim].nome}</span><span class="coords">${coordsHTML(o.x, o.y, o.z)}</span>`;
+  } else {
+    conv.className = 'conv-bloco';
+    conv.textContent = 'O End não tem conversão: essas coordenadas valem só lá.';
+  }
+  const nota = $('#dl-nota');
+  nota.hidden = !l.nota;
+  nota.textContent = l.nota;
+  $('#dl-data').textContent = `Salvo em ${new Date(l.em).toLocaleDateString('pt-BR')}`;
+  dlgLocal.showModal();
+}
+$('#dl-copiar').addEventListener('click', async e => {
+  const botao = e.currentTarget, l = localAberto();
+  if (!l) return;
+  retorno(botao, (await copiarTexto(coordsCopia(l))) ? 'Copiado!' : 'Não deu pra copiar');
+});
+$('#dl-compartilhar').addEventListener('click', () => { const l = localAberto(); if (l) compartilhar(textoLocal(l)); });
+$('#dl-editar').addEventListener('click', () => { const l = localAberto(); if (!l) return; dlgLocal.close(); abrirForm(l); });
+$('#dl-apagar').addEventListener('click', () => {
+  const l = localAberto();
+  if (!l) return;
+  const pos = locais.indexOf(l);
+  dlgLocal.close();
+  mudar(lista => { const i = lista.findIndex(x => x.id === l.id); if (i >= 0) lista.splice(i, 1); });
+  toast(`“${l.nome}” apagado`, 'Desfazer', () => mudar(lista => {
+    if (!lista.some(x => x.id === l.id)) lista.splice(Math.min(pos, lista.length), 0, l);
+  }));
+});
+
+// ---------- Formulário (novo e editar) ----------
+const dlgForm = $('#dlg-form'), form = $('#form-local');
+const fNome = $('#f-nome'), fX = $('#f-x'), fY = $('#f-y'), fZ = $('#f-z'), fNota = $('#f-nota');
+const F_XYZ = { x: fX, y: fY, z: fZ };
+let editandoId = null;
+$('#f-tipos').innerHTML = Object.entries(TIPOS).map(([k, t]) =>
+  `<label class="opt"><input type="radio" name="tipo" value="${k}"><span class="opt-box">${svg(t.ico)}<span>${t.nome}</span></span></label>`).join('');
+$('#f-dims').innerHTML = Object.entries(DIMS).map(([k, d]) =>
+  `<label class="opt ${d.cls}"><input type="radio" name="dim" value="${k}"><span class="opt-box">${d.nome}</span></label>`).join('');
+
+function mostrarErro(id, campos, ruim) {
+  $(id).hidden = !ruim;
+  campos.forEach(c => c.setAttribute('aria-invalid', String(ruim)));
+}
+function abrirForm(l, pre = {}) {
+  editandoId = l ? l.id : null;
+  const d = l || pre;
+  $('#f-titulo').textContent = l ? 'Editar local' : 'Novo local';
+  fNome.value = l ? l.nome : '';
+  form.elements.tipo.value = l ? l.tipo : 'base';
+  form.elements.dim.value = d.dim || 'overworld';
+  fX.value = d.x ?? '';
+  fY.value = d.y ?? '';
+  fZ.value = d.z ?? '';
+  fNota.value = l ? l.nota : '';
+  mostrarErro('#f-erro-nome', [fNome], false);
+  mostrarErro('#f-erro-coords', [fX, fZ], false);
+  previa();
+  dlgForm.showModal();
+  if (!l) fNome.focus();
+}
+function previa() {
+  const el = $('#f-previa');
+  const dim = form.elements.dim.value;
+  el.className = 'previa';
+  if (dim === 'end') { el.textContent = 'O End não tem conversão: as coordenadas valem só lá.'; return; }
+  const alvo = dim === 'overworld' ? 'nether' : 'overworld';
+  el.classList.add(DIMS[alvo].cls);
+  const x = numero(fX.value), y = numero(fY.value), z = numero(fZ.value);
+  if (x === null || z === null) { el.textContent = `Preencha X e Z para ver no ${DIMS[alvo].nome}.`; return; }
+  const o = outroLado({ dim, x, y, z });
+  el.textContent = `No ${DIMS[alvo].nome}: ${coordsTexto(o.x, o.y, o.z)}`;
+}
+form.addEventListener('change', e => { if (e.target.name === 'dim') previa(); });
+fNome.addEventListener('input', () => { if (fNome.value.trim()) mostrarErro('#f-erro-nome', [fNome], false); });
+[fX, fY, fZ].forEach(c => prepararNumero(c, campo => {
+  const n = numeros(campo.value);
+  if (n.length >= 2) distribuir(F_XYZ, n);
+  if (numero(fX.value) !== null && numero(fZ.value) !== null) mostrarErro('#f-erro-coords', [fX, fZ], false);
+  previa();
+}));
+form.addEventListener('submit', e => {
+  e.preventDefault();
+  const nome = fNome.value.trim();
+  const x = numero(fX.value), y = numero(fY.value), z = numero(fZ.value);
+  const faltaNome = !nome, faltaXZ = x === null || z === null;
+  mostrarErro('#f-erro-nome', [fNome], faltaNome);
+  mostrarErro('#f-erro-coords', [fX, fZ], faltaXZ);
+  if (faltaNome) { fNome.focus(); return; }
+  if (faltaXZ) { (x === null ? fX : fZ).focus(); return; }
+  const dados = { nome, tipo: form.elements.tipo.value, dim: form.elements.dim.value, x, y, z, nota: fNota.value.trim() };
+  const id = editandoId;
+  mudar(lista => {
+    const i = id ? lista.findIndex(l => l.id === id) : -1;
+    const novo = limpar({ ...(i >= 0 ? lista[i] : { id: novoId(), em: Date.now() }), ...dados });
+    if (i >= 0) lista[i] = novo; else lista.unshift(novo);
+  });
+  dlgForm.close();
+  if (id) toast('Local atualizado');
+  else if (!$('#tela-locais').hidden) toast('Local salvo');
+  else toast('Local salvo', 'Ver', () => irPara('locais'));
+});
+$('#btn-novo').addEventListener('click', () => abrirForm(null));
+$('#btn-novo-vazio').addEventListener('click', () => abrirForm(null));
+
+// ---------- Compartilhar por link ----------
+function b64e(txt) {
+  let s = '';
+  for (const b of new TextEncoder().encode(txt)) s += String.fromCharCode(b);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64d(txt) {
+  let s = txt.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return new TextDecoder().decode(Uint8Array.from(atob(s), c => c.charCodeAt(0)));
+}
+const paraArray = l => { const a = [l.nome, l.tipo, DIMS[l.dim].curto, l.x, l.y, l.z]; if (l.nota) a.push(l.nota); return a; };
+const deArray = a => (Array.isArray(a)
+  ? limpar({ nome: a[0], tipo: a[1], dim: tem(DIM_CURTO, a[2]) ? DIM_CURTO[a[2]] : 'overworld', x: a[3], y: a[4], z: a[5], nota: a[6] })
+  : null);
+const linkDe = lista => `${APP_URL}#add=${b64e(JSON.stringify({ v: 1, p: lista.map(paraArray) }))}`;
+const linhaCoords = l => `${DIMS[l.dim].nome}: ${coordsTexto(l.x, l.y, l.z)}`;
+function textoLocal(l) {
+  const o = outroLado(l);
+  const linhas = [`${l.nome} (${TIPOS[l.tipo].nome})`, linhaCoords(l)];
+  if (o) linhas.push(linhaCoords(o));
+  if (l.nota) linhas.push(`Nota: ${l.nota}`);
+  linhas.push('', `Abrir no app Coords: ${linkDe([l])}`);
+  return linhas.join('\n');
+}
+function textoTodos(lista) {
+  const linhas = lista.slice(0, 20).map(l => `• ${l.nome}: ${linhaCoords(l)}`);
+  if (lista.length > 20) linhas.push(`… e mais ${lista.length - 20}`);
+  return [`Meus locais no Coords (${lista.length})`, ...linhas, '', `Abrir todos no app: ${linkDe(lista)}`].join('\n');
+}
+const dlgShare = $('#dlg-share');
+async function compartilhar(texto) {
+  if (navigator.share) {
+    try { await navigator.share({ text: texto }); return; } catch (err) { if (err && err.name === 'AbortError') return; }
+  }
+  $('#sh-texto').value = texto;
+  $('#sh-whats').href = `https://wa.me/?text=${encodeURIComponent(texto)}`;
+  if (!dlgShare.open) dlgShare.showModal();
+}
+$('#sh-copiar').addEventListener('click', async e => {
+  const botao = e.currentTarget;
+  retorno(botao, (await copiarTexto($('#sh-texto').value)) ? 'Copiado!' : 'Não deu pra copiar');
+});
+$('#sh-texto').addEventListener('focus', e => e.target.select());
+$('#btn-enviar-todos').addEventListener('click', () => { if (locais.length) compartilhar(textoTodos(locais)); });
+
+// ---------- Receber locais por link (#add=...) ----------
+const dlgConvite = $('#dlg-convite');
+let recebidos = [];
+const mesmoLocal = (a, b) => semAcento(a.nome) === semAcento(b.nome) && a.dim === b.dim && a.x === b.x && a.y === b.y && a.z === b.z;
+function lerConvite() {
+  const m = /^#add=([\w-]+)$/.exec(location.hash);
+  if (!m) return;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch { /* sem histórico */ }
+  let lista = [];
+  try {
+    const dados = JSON.parse(b64d(m[1]));
+    lista = (Array.isArray(dados && dados.p) ? dados.p : []).slice(0, 500).map(deArray).filter(Boolean);
+  } catch { lista = []; }
+  if (!lista.length) { toast('Esse link não tem locais que dê pra abrir.'); return; }
+  const novos = lista.filter(r => !locais.some(l => mesmoLocal(l, r)));
+  recebidos = novos;
+  const n = lista.length, ja = n - novos.length;
+  $('#cv-titulo').textContent = n === 1 ? 'Local recebido' : 'Locais recebidos';
+  $('#cv-texto').textContent = !novos.length
+    ? (n === 1 ? 'Você já tem esse local salvo.' : 'Você já tem todos esses locais salvos.')
+    : ja ? `Chegaram ${n} locais. ${ja === 1 ? '1 você já tem.' : `${ja} você já tem.`}`
+      : (n === 1 ? 'Alguém te mandou este local.' : `Alguém te mandou ${n} locais.`);
+  $('#cv-lista').innerHTML = lista.map(l => itemHTML(l, false, novos.includes(l) ? '' : '<span class="ja">Já salvo</span>')).join('');
+  const botao = $('#cv-adicionar');
+  botao.hidden = !novos.length;
+  botao.textContent = novos.length === 1 ? 'Adicionar 1 local' : `Adicionar ${novos.length} locais`;
+  if (!dlgConvite.open) dlgConvite.showModal();
+}
+$('#cv-adicionar').addEventListener('click', () => {
+  const novos = recebidos;
+  recebidos = [];
+  mudar(lista => { lista.unshift(...novos.filter(r => !lista.some(l => mesmoLocal(l, r)))); });
+  dlgConvite.close();
+  irPara('locais');
+  toast(novos.length === 1 ? 'Local adicionado' : `${novos.length} locais adicionados`);
+});
+
+// ---------- Folhas: fechar ----------
+document.addEventListener('click', e => { const b = e.target.closest('[data-fechar]'); if (b) b.closest('dialog').close(); });
+$$('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));
+
+// ---------- Instalar como app ----------
+let pedidoInstalar = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); pedidoInstalar = e; $('#btn-instalar').hidden = false; });
+$('#btn-instalar').addEventListener('click', async () => {
+  const p = pedidoInstalar;
+  if (!p) return;
+  pedidoInstalar = null;
+  $('#btn-instalar').hidden = true;
+  try { await p.prompt(); } catch { /* a pessoa fechou */ }
+});
+window.addEventListener('appinstalled', () => { pedidoInstalar = null; $('#btn-instalar').hidden = true; toast('App instalado! Abra pelo ícone Coords.'); });
+(function dicaIphone() {
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const instalado = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  let emMoldura = true;
+  try { emMoldura = window.self !== window.top; } catch { emMoldura = true; }
+  if (ios && !instalado && !emMoldura && !ler(CHAVE.dicaIos)) $('#dica-ios').hidden = false;
+})();
+$('#dica-ios-ok').addEventListener('click', () => { $('#dica-ios').hidden = true; gravar(CHAVE.dicaIos, '1'); });
+
+// Outra aba do app mudou a lista.
+window.addEventListener('storage', e => { if (e.key === CHAVE.locais && !soMemoria) { locais = carregar(); renderLista(); } });
+
+// ---------- Início ----------
+$$('[data-ico]').forEach(el => { el.innerHTML = svg(el.dataset.ico); });
+restaurarConv();
+renderLista();
+irPara(ler(CHAVE.aba) === 'locais' ? 'locais' : 'conversor');
+lerConvite();
+window.addEventListener('hashchange', lerConvite);
+if (soMemoria) setTimeout(avisoSemMemoria, 800);
+try {
+  if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('sw.js').catch(() => {});
+} catch { /* sem service worker aqui */ }
+})();
+</script>
+</body>
+</html>

@@ -1,3 +1,24 @@
+# Coords: app de coordenadas do server
+
+O app fica na pasta [`docs/`](docs/). Ele guarda bases, portais, minas e ilhas e converte
+coordenadas entre Overworld e Nether (÷ 8). Ele instala no celular como app e funciona sem internet.
+
+Link do app (depois de ligar o GitHub Pages): https://mj9375921-commits.github.io/Project/
+
+**Ligar o GitHub Pages (uma vez só):**
+
+1. No repositório, abra **Settings → Pages**.
+2. Em **Build and deployment**, escolha **Source: Deploy from a branch**.
+3. Escolha a branch `ccr-07b648c6-d6hc6d` e a pasta `/docs`. Toque em **Save**.
+4. Espere 1 ou 2 minutos e abra o link acima.
+
+**Instalar no celular:**
+
+- Android (Chrome): abra o link e toque em **Instalar app**. Se o botão não aparecer, use o menu ⋮ → **Instalar app**.
+- iPhone (Safari): toque em **Compartilhar** → **Adicionar à Tela de Início**.
+
+---
+
 # Remotion video
 
 <p align="center">
