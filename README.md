@@ -8,6 +8,7 @@ Link do app (depois de ligar o GitHub Pages): https://mj9375921-commits.github.i
 Status do server ResenhaCraft (quem está online): https://mj9375921-commits.github.io/Project/server/
 
 Embaixada (conversa e tratados entre os times): https://mj9375921-commits.github.io/Project/embaixada/
+APK da Embaixada para Android: página **Releases** do repositório (o GitHub monta sozinho a partir de `android-embaixada/`).
 
 **Ligar o GitHub Pages (uma vez só):**
 

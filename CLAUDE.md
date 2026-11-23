@@ -12,5 +12,8 @@
   `POST https://ntfy.sh/` com JSON `{"topic": "<sala>", "title": "<nome> · <time>", "message": "<título>\n1. ...\n2. ...",
   "tags": ["scroll", "tratado"], "click": "https://mj9375921-commits.github.io/Project/embaixada/#sala=<sala>"}`.
   A sala não fica no repositório (ele é público). Peça o link da sala ao dono.
+- `android-embaixada/` gera o APK da Embaixada (Capacitor abre o site do GitHub Pages). O workflow
+  `.github/workflows/apk-embaixada.yml` monta e publica em Releases a cada push nessa pasta.
+  Nunca coloque chave de assinatura no repositório: ele é público.
 - Se mudar a lista de arquivos em `docs/sw.js`, aumente o número em `CACHE`.
 - `src/` é um projeto Remotion (vídeo). Checagem: `npm run lint`.

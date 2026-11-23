@@ -210,7 +210,12 @@ dialog.sheet::backdrop { background: var(--scrim); }
   <h2>Abrir a embaixada</h2>
   <p>Crie a sala de conversa e mande o convite pro outro time. Só quem tiver o link entra.</p>
   <button type="button" class="btn btn-primary btn-block" id="btn-criar">Criar sala</button>
-  <p class="dica">Recebeu um convite? Abra o link que te mandaram.</p>
+  <form class="campo" id="form-entrar" novalidate>
+    <label for="convite">Recebeu um convite? Cole o link ou o nome da sala</label>
+    <input class="txt" id="convite" autocomplete="off" placeholder="embaixada-…">
+    <p class="erro" id="convite-erro" hidden>Esse convite não parece certo. Copie o link inteiro de novo.</p>
+    <button type="submit" class="btn btn-block">Entrar na sala</button>
+  </form>
 </main>
 
 <!-- Conversa -->
@@ -393,6 +398,17 @@ $('#form-perfil').addEventListener('submit', e => {
   gravar(CHAVE.perfil, perfil);
   mostrarTela();
   render();
+});
+$('#form-entrar').addEventListener('submit', e => {
+  e.preventDefault();
+  const txt = $('#convite').value.trim();
+  const m = /sala=([A-Za-z0-9_-]{8,64})/.exec(txt);
+  const nova = m ? m[1] : (SALA_OK.test(txt) ? txt : null);
+  $('#convite-erro').hidden = !!nova;
+  if (!nova) return;
+  sala = nova;
+  gravar(CHAVE.sala, sala);
+  mostrarTela();
 });
 $('#btn-criar').addEventListener('click', () => {
   const bytes = new Uint8Array(12);

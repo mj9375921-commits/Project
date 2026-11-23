@@ -1,0 +1,12 @@
+{
+  "name": "embaixada-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "APK do app Embaixada. Abre https://mj9375921-commits.github.io/Project/embaixada/ por dentro.",
+  "devDependencies": {
+    "@capacitor/android": "7.6.8",
+    "@capacitor/assets": "3.0.5",
+    "@capacitor/cli": "7.6.8",
+    "@capacitor/core": "7.6.8"
+  }
+}
