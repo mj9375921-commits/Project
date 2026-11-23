@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Embaixada</title>
+<meta name="description" content="Conversa e tratados entre os times do server.">
+<meta name="theme-color" content="#10151F">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Embaixada">
+<link rel="preload" href="../fonts/jersey10-latin.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+/* DESIGN (segue ../DESIGN.md):
+   Tipografia: Jersey 10 para títulos e nomes; fonte do sistema para as mensagens. Escala 12/14/16/20/28/40.
+   Cores: tokens do Coords. Meu time em cor de tocha, o outro time em vermelho Nether.
+   O tratado é um pergaminho (bege com borda marrom), o único elemento claro da tela.
+   Espaçamento: 4/8/16/24/40/64. Layout: conversa em uma coluna até 560px, caixa de escrever fixa embaixo. */
+@font-face {
+  font-family: "Jersey 10";
+  src: url("../fonts/jersey10-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+:root {
+  color-scheme: dark;
+  --bg: #10151F;
+  --surface: #182030;
+  --surface-2: #212B3F;
+  --line: #2A3448;
+  --edge: #6E7A95;
+  --text: #EEF2F8;
+  --text-dim: #A3AFC4;
+  --torch: #FFB938;
+  --torch-edge: #C4861C;
+  --on-torch: #241600;
+  --ow: #74C94F;
+  --nether: #FF6B57;
+  --danger: #FF7A70;
+  --papel: #EBDDB7;
+  --papel-borda: #8A6A3A;
+  --tinta: #2B1D0E;
+  --tinta-dim: #5E4A2E;
+  --selo: #A3271C;
+  --scrim: rgb(4 7 12 / 0.72);
+
+  --font-pixel: "Jersey 10", ui-monospace, "SF Mono", "Roboto Mono", monospace;
+  --font-text: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fs-12: 0.75rem;
+  --fs-14: 0.875rem;
+  --fs-16: 1rem;
+  --fs-20: 1.25rem;
+  --fs-28: 1.75rem;
+  --fs-40: 2.5rem;
+  --sp-4: 4px;
+  --sp-8: 8px;
+  --sp-16: 16px;
+  --sp-24: 24px;
+  --sp-40: 40px;
+  --sp-64: 64px;
+  --tap: 44px;
+  --barra-h: 76px;
+  --relevo: inset 0 -3px 0 rgb(0 0 0 / 0.35), inset 0 2px 0 rgb(255 255 255 / 0.18);
+
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html:has(dialog[open]) { overflow: hidden; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 400 var(--fs-16)/1.5 var(--font-text); font-synthesis: none; -webkit-tap-highlight-color: transparent; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); background: var(--bg); z-index: 10; }
+h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { font-family: var(--font-pixel); font-weight: 400; line-height: 1; letter-spacing: 0.02em; }
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--torch); outline-offset: 2px; }
+.ico { display: block; width: 20px; height: 20px; flex: none; }
+
+.wrap { max-width: 560px; margin-inline: auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* Topo */
+.topo { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 2px solid var(--line); }
+.topo-in { display: flex; align-items: center; gap: var(--sp-8); min-height: 64px; padding-block: var(--sp-8); }
+.topo h1 { flex: 1; min-width: 0; font-size: var(--fs-28); display: flex; align-items: center; gap: var(--sp-8); }
+.topo h1 .ico { width: 30px; height: 30px; color: var(--torch); }
+.ao-vivo { font: 400 var(--fs-14)/1 var(--font-text); color: var(--text-dim); display: flex; align-items: center; gap: var(--sp-4); }
+.ao-vivo::before { content: ""; width: var(--sp-8); height: var(--sp-8); background: var(--text-dim); }
+.ao-vivo.on::before { background: var(--ow); }
+.btn-icone { display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 2px solid var(--edge); border-radius: 2px; background: var(--surface-2); color: var(--text); box-shadow: var(--relevo); }
+
+/* Botões e campos */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-8); min-height: var(--tap); padding-block: var(--sp-8); padding-inline: var(--sp-16); border: 2px solid var(--edge); border-radius: 2px; background: var(--surface-2); color: var(--text); font: 600 var(--fs-16)/1.2 var(--font-text); text-align: center; text-decoration: none; box-shadow: var(--relevo); }
+.btn:active, .btn-icone:active { transform: translateY(1px); box-shadow: none; }
+.btn:disabled { opacity: 0.5; cursor: progress; transform: none; }
+.btn-primary { background: var(--torch); border-color: var(--torch-edge); color: var(--on-torch); }
+.btn-perigo { color: var(--danger); }
+.btn-block { width: 100%; }
+.txt { width: 100%; min-height: var(--tap); padding-block: var(--sp-8); padding-inline: var(--sp-16); border: 2px solid var(--edge); border-radius: 2px; background: var(--surface-2); color: var(--text); font: 400 var(--fs-16)/1.4 var(--font-text); -webkit-appearance: none; appearance: none; }
+.txt:focus { outline: none; border-color: var(--torch); }
+.txt::placeholder { color: var(--text-dim); opacity: 1; }
+textarea.txt { resize: vertical; }
+.campo { display: flex; flex-direction: column; gap: var(--sp-8); }
+.campo label { font-size: var(--fs-14); font-weight: 600; color: var(--text-dim); }
+.dica { font-size: var(--fs-14); color: var(--text-dim); }
+.erro { font-size: var(--fs-14); color: var(--danger); }
+
+/* Telas de entrada */
+.entrada { display: flex; flex-direction: column; gap: var(--sp-24); padding-block: var(--sp-40); }
+.entrada h2 { font-size: var(--fs-40); }
+.selo-grande { color: var(--torch); }
+.selo-grande .ico { width: 80px; height: 80px; }
+
+/* Conversa */
+.conversa { display: flex; flex-direction: column; gap: var(--sp-16); padding-block: var(--sp-24) calc(var(--barra-h) + var(--sp-40)); }
+.vazio { display: flex; flex-direction: column; gap: var(--sp-8); padding: var(--sp-24) var(--sp-16); border: 2px dashed var(--line); text-align: center; }
+.vazio h3 { font-size: var(--fs-28); }
+.msg { display: flex; flex-direction: column; gap: var(--sp-4); max-width: 85%; align-self: flex-start; }
+.msg.minha { align-self: flex-end; align-items: flex-end; }
+.autor { font: 400 var(--fs-20)/1 var(--font-pixel); color: var(--nether); }
+.msg.minha .autor { color: var(--torch); }
+.autor .time { color: var(--text-dim); font-size: var(--fs-14); }
+.balao { padding: var(--sp-8) var(--sp-16); background: var(--surface-2); border: 2px solid color-mix(in srgb, var(--nether) 55%, var(--surface-2)); white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg.minha .balao { border-color: color-mix(in srgb, var(--torch) 55%, var(--surface-2)); background: color-mix(in srgb, var(--torch) 10%, var(--surface-2)); }
+.hora { font-size: var(--fs-12); color: var(--text-dim); }
+.aviso-linha { align-self: center; max-width: 100%; padding: var(--sp-4) var(--sp-16); background: var(--surface); border: 2px solid var(--line); font-size: var(--fs-14); color: var(--text-dim); text-align: center; overflow-wrap: anywhere; }
+.aviso-linha.aceito { color: var(--ow); }
+.aviso-linha.recusado { color: var(--danger); }
+
+/* Tratado (pergaminho) */
+.tratado { align-self: stretch; max-width: 100%; display: flex; flex-direction: column; gap: var(--sp-16); padding: var(--sp-16); background: var(--papel); color: var(--tinta); border: 4px solid var(--papel-borda); box-shadow: inset 0 0 0 2px var(--papel), inset 0 0 0 4px color-mix(in srgb, var(--papel-borda) 50%, var(--papel)); }
+.tratado .rotulo { font: 400 var(--fs-20)/1 var(--font-pixel); color: var(--tinta-dim); letter-spacing: 0.06em; text-transform: uppercase; }
+.tratado h3 { font-size: var(--fs-28); color: var(--tinta); overflow-wrap: anywhere; }
+.tratado ol { margin: 0; padding-left: var(--sp-24); display: flex; flex-direction: column; gap: var(--sp-8); }
+.tratado li { overflow-wrap: anywhere; }
+.tratado .assinatura { font-size: var(--fs-14); color: var(--tinta-dim); }
+.tratado .situacao { align-self: flex-start; padding: var(--sp-4) var(--sp-8); font: 400 var(--fs-20)/1 var(--font-pixel); letter-spacing: 0.04em; text-transform: uppercase; border: 2px solid currentColor; }
+.situacao.pendente { color: var(--tinta-dim); }
+.situacao.aceito { color: #1F6B2A; }
+.situacao.recusado { color: var(--selo); }
+.tratado .acoes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-8); }
+.tratado .btn { background: #F5ECD3; border-color: var(--papel-borda); color: var(--tinta); }
+.tratado .btn-aceitar { background: #2F7D3A; border-color: #1F5A27; color: #FFFFFF; }
+.tratado .btn-contra { grid-column: 1 / -1; }
+
+/* Caixa de escrever */
+.barra { position: fixed; inset: auto 0 0; z-index: 5; background: var(--surface); border-top: 2px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.barra form { display: flex; align-items: flex-end; gap: var(--sp-8); padding-block: var(--sp-16); }
+.barra textarea { flex: 1; min-width: 0; max-height: 128px; resize: none; }
+
+/* Folhas */
+dialog.sheet { width: 100%; max-width: 560px; max-height: 92vh; max-height: 92dvh; margin: auto auto 0; padding: 0; border: 0; border-radius: 8px 8px 0 0; background: var(--surface); color: var(--text); overflow-y: auto; overscroll-behavior: contain; }
+dialog.sheet[open] { animation: subir 0.2s ease-out; }
+dialog.sheet::backdrop { background: var(--scrim); }
+@keyframes subir { from { transform: translateY(var(--sp-24)); opacity: 0; } }
+.sheet-in { display: flex; flex-direction: column; gap: var(--sp-24); padding-top: var(--sp-24); padding-bottom: calc(var(--sp-24) + env(safe-area-inset-bottom, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.sheet-head { display: flex; align-items: flex-start; gap: var(--sp-16); }
+.sheet-head h2 { flex: 1; min-width: 0; font-size: var(--fs-28); }
+.btn-x { flex: none; display: grid; place-items: center; width: var(--tap); height: var(--tap); margin-top: calc(-1 * var(--sp-8)); margin-right: calc(-1 * var(--sp-8)); padding: 0; border: 0; background: none; color: var(--text-dim); }
+.grupo { display: flex; flex-direction: column; gap: var(--sp-8); padding: var(--sp-16); background: var(--surface-2); }
+.grupo h3 { font-size: var(--fs-20); }
+.link { font: 400 var(--fs-14)/1.4 var(--font-text); color: var(--text-dim); overflow-wrap: anywhere; }
+.sala-nome { font: 400 var(--fs-28)/1 var(--font-pixel); overflow-wrap: anywhere; }
+.lista-tratados { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-8); }
+.lista-tratados button { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-16); width: 100%; min-height: var(--tap); padding: var(--sp-8) var(--sp-16); border: 2px solid var(--line); background: var(--surface-2); color: var(--text); text-align: left; }
+.lista-tratados .t { min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
+.lista-tratados .s { flex: none; font: 400 var(--fs-20)/1 var(--font-pixel); text-transform: uppercase; }
+.s.pendente { color: var(--text-dim); }
+.s.aceito { color: var(--ow); }
+.s.recusado { color: var(--danger); }
+.duas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-8); }
+
+.toast { position: fixed; z-index: 20; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(var(--barra-h) + env(safe-area-inset-bottom, 0px) + var(--sp-8)); max-width: 528px; min-height: var(--tap); margin-inline: auto; display: flex; align-items: center; padding: var(--sp-8) var(--sp-16); border-radius: 2px; background: var(--text); color: var(--bg); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- Primeira vez: nome e time -->
+<main class="wrap entrada" id="tela-perfil" hidden>
+  <span data-ico="pergaminho" class="selo-grande"></span>
+  <h2>Embaixada</h2>
+  <p id="perfil-intro">Aqui os times conversam e fecham tratados. Primeiro, quem é você?</p>
+  <form id="form-perfil" class="entrada" style="padding:0" novalidate>
+    <div class="campo">
+      <label for="p-nome">Seu nome no server</label>
+      <input class="txt" id="p-nome" maxlength="24" autocomplete="nickname" placeholder="Ex.: Davi">
+    </div>
+    <div class="campo">
+      <label for="p-time">Nome do seu time</label>
+      <input class="txt" id="p-time" maxlength="24" autocomplete="off" placeholder="Ex.: Time do Davi">
+      <p class="dica">Use o mesmo nome que seus parceiros de time usarem. É assim que o app sabe quem é aliado.</p>
+    </div>
+    <p class="erro" id="p-erro" hidden>Preencha seu nome e o nome do seu time.</p>
+    <button type="submit" class="btn btn-primary btn-block">Continuar</button>
+  </form>
+</main>
+
+<!-- Sem sala: criar uma -->
+<main class="wrap entrada" id="tela-criar" hidden>
+  <span data-ico="pergaminho" class="selo-grande"></span>
+  <h2>Abrir a embaixada</h2>
+  <p>Crie a sala de conversa e mande o convite pro outro time. Só quem tiver o link entra.</p>
+  <button type="button" class="btn btn-primary btn-block" id="btn-criar">Criar sala</button>
+  <p class="dica">Recebeu um convite? Abra o link que te mandaram.</p>
+</main>
+
+<!-- Conversa -->
+<div id="tela-chat" hidden>
+  <header class="topo">
+    <div class="wrap topo-in">
+      <h1><span data-ico="pergaminho"></span>Embaixada</h1>
+      <span class="ao-vivo" id="ao-vivo">conectando</span>
+      <button type="button" class="btn-icone" id="btn-tratados" aria-label="Ver tratados"><span data-ico="lista"></span></button>
+      <button type="button" class="btn-icone" id="btn-ajustes" aria-label="Convite e ajustes"><span data-ico="ajustes"></span></button>
+    </div>
+  </header>
+  <main class="wrap conversa" id="conversa" aria-live="polite"></main>
+  <div class="barra">
+    <form class="wrap" id="form-msg" novalidate>
+      <button type="button" class="btn-icone" id="btn-novo-tratado" aria-label="Escrever tratado"><span data-ico="pergaminho"></span></button>
+      <textarea class="txt" id="msg" rows="1" maxlength="1000" placeholder="Mensagem" aria-label="Mensagem"></textarea>
+      <button type="submit" class="btn btn-primary" id="btn-enviar">Enviar</button>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<!-- Escrever tratado -->
+<dialog class="sheet" id="dlg-tratado" aria-labelledby="t-titulo-dlg">
+  <form class="sheet-in" id="form-tratado" novalidate>
+    <div class="sheet-head">
+      <h2 id="t-titulo-dlg">Novo tratado</h2>
+      <button type="button" class="btn-x" data-fechar aria-label="Fechar"><span data-ico="fechar"></span></button>
+    </div>
+    <div class="campo">
+      <label for="t-titulo">Nome do tratado</label>
+      <input class="txt" id="t-titulo" maxlength="60" autocomplete="off" placeholder="Ex.: Paz de 3 dias">
+    </div>
+    <div class="campo">
+      <label for="t-clausulas">Cláusulas (uma por linha)</label>
+      <textarea class="txt" id="t-clausulas" rows="6" maxlength="1500" placeholder="Ninguém ataca a base do outro por 3 dias&#10;O Nether é zona neutra&#10;Quem quebrar paga 10 diamantes"></textarea>
+    </div>
+    <p class="erro" id="t-erro" hidden>Dê um nome e escreva pelo menos uma cláusula.</p>
+    <button type="submit" class="btn btn-primary btn-block" id="btn-enviar-tratado">Enviar tratado</button>
+  </form>
+</dialog>
+
+<!-- Lista de tratados -->
+<dialog class="sheet" id="dlg-lista" aria-labelledby="l-titulo">
+  <div class="sheet-in">
+    <div class="sheet-head">
+      <h2 id="l-titulo">Tratados</h2>
+      <button type="button" class="btn-x" data-fechar aria-label="Fechar"><span data-ico="fechar"></span></button>
+    </div>
+    <ul class="lista-tratados" id="lista-tratados"></ul>
+    <p class="dica" id="lista-vazia">Nenhum tratado ainda. Toque no pergaminho perto da caixa de mensagem pra propor um.</p>
+  </div>
+</dialog>
+
+<!-- Convite e ajustes -->
+<dialog class="sheet" id="dlg-ajustes" aria-labelledby="a-titulo">
+  <div class="sheet-in">
+    <div class="sheet-head">
+      <h2 id="a-titulo">Convite e ajustes</h2>
+      <button type="button" class="btn-x" data-fechar aria-label="Fechar"><span data-ico="fechar"></span></button>
+    </div>
+    <div class="grupo">
+      <h3>Convidar</h3>
+      <p class="dica">Mande este link pro outro time e pro seu. Quem tiver o link lê e escreve na sala.</p>
+      <p class="link" id="a-link"></p>
+      <div class="duas">
+        <a class="btn btn-primary" id="a-whats" target="_blank" rel="noopener" href="https://wa.me/">WhatsApp</a>
+        <button type="button" class="btn" id="a-copiar">Copiar link</button>
+      </div>
+    </div>
+    <div class="grupo">
+      <h3>Notificações</h3>
+      <p class="dica">Instale o app grátis <strong>ntfy</strong>, toque em + e assine esta sala. Ele avisa cada mensagem nova, mesmo com o celular no bolso.</p>
+      <p class="sala-nome" id="a-sala"></p>
+      <button type="button" class="btn" id="a-copiar-sala">Copiar nome da sala</button>
+    </div>
+    <div class="grupo">
+      <h3>Você</h3>
+      <p id="a-perfil"></p>
+      <button type="button" class="btn" id="a-editar">Trocar nome ou time</button>
+    </div>
+    <p class="dica">O servidor de mensagens guarda cada mensagem por 12 horas. Este celular guarda tudo o que já recebeu, então abra a Embaixada pelo menos uma vez por dia.</p>
+    <button type="button" class="btn btn-perigo" id="a-sair">Sair desta sala</button>
+    <button type="button" class="btn btn-perigo" id="a-sair-sim" hidden>Toque de novo pra sair</button>
+  </div>
+</dialog>
+
+<script>
+(() => {
+'use strict';
+const NTFY = 'https://ntfy.sh';
+const APP_URL = location.origin + location.pathname;
+const CHAVE = { perfil: 'embaixada.perfil.v1', sala: 'embaixada.sala.v1', msgs: s => `embaixada.msgs.v1.${s}` };
+const SEP = ' · ';
+const MAX_GUARDADAS = 600;
+
+const ICONES = {
+  pergaminho: ['.########.', '#++++++++#', '.#++++++#.', '.#+####+#.', '.#++++++#.', '.#+###++#.', '.#++++##.#', '.#+++####.', '#+++++###.', '.#######..'],
+  lista: ['..........', '##.######.', '##.######.', '..........', '##.######.', '##.######.', '..........', '##.######.', '##.######.', '..........'],
+  ajustes: ['....##....', '.#.####.#.', '.########.', '..##..##..', '###....###', '###....###', '..##..##..', '.########.', '.#.####.#.', '....##....'],
+  fechar: ['..........', '.##....##.', '.###..###.', '..######..', '...####...', '...####...', '..######..', '.###..###.', '.##....##.', '..........'],
+};
+function svg(nome) {
+  let cheio = '', meio = '';
+  ICONES[nome].forEach((linha, y) => linha.replace(/#+|\++/g, (m, x) => {
+    const d = `M${x} ${y}h${m.length}v1h-${m.length}z`;
+    if (m[0] === '#') cheio += d; else meio += d;
+    return m;
+  }));
+  return `<svg class="ico" viewBox="0 0 10 10" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="currentColor" d="${cheio}"/>${meio ? `<path fill="currentColor" opacity=".35" d="${meio}"/>` : ''}</svg>`;
+}
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const mesmo = (a, b) => String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+function ler(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } }
+function gravar(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sem armazenamento */ } }
+function apagar(k) { try { localStorage.removeItem(k); } catch { /* sem armazenamento */ } }
+
+let toastTimer = 0;
+function toast(t) {
+  const el = $('#toast');
+  el.textContent = t;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 2600);
+}
+async function copiarTexto(t) {
+  try { await navigator.clipboard.writeText(t); return true; } catch { /* tenta o jeito antigo */ }
+  try {
+    const a = document.createElement('textarea');
+    a.value = t;
+    a.setAttribute('readonly', '');
+    a.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    (document.querySelector('dialog[open]') || document.body).append(a);
+    a.select();
+    const ok = document.execCommand('copy');
+    a.remove();
+    return ok;
+  } catch { return false; }
+}
+
+// ---------- Perfil e sala ----------
+let perfil = ler(CHAVE.perfil);
+if (!perfil || typeof perfil.nome !== 'string' || typeof perfil.time !== 'string') perfil = null;
+const SALA_OK = /^[A-Za-z0-9_-]{8,64}$/;
+function salaDoLink() {
+  const m = /[#&]sala=([A-Za-z0-9_-]{8,64})/.exec(location.hash);
+  return m ? m[1] : null;
+}
+let sala = salaDoLink() || ler(CHAVE.sala);
+if (typeof sala !== 'string' || !SALA_OK.test(sala)) sala = null;
+if (salaDoLink()) {
+  gravar(CHAVE.sala, sala);
+  try { history.replaceState(null, '', location.pathname + location.search); } catch { /* sem histórico */ }
+}
+const linkConvite = () => `${APP_URL}#sala=${sala}`;
+
+function mostrarTela() {
+  $('#tela-perfil').hidden = !!perfil;
+  $('#tela-criar').hidden = !perfil || !!sala;
+  $('#tela-chat').hidden = !perfil || !sala;
+  if (!perfil) {
+    $('#perfil-intro').textContent = sala
+      ? 'Você recebeu um convite pra Embaixada do server. Primeiro, quem é você?'
+      : 'Aqui os times conversam e fecham tratados. Primeiro, quem é você?';
+    $('#p-nome').focus();
+  }
+  if (perfil && sala) iniciarConversa();
+}
+$('#form-perfil').addEventListener('submit', e => {
+  e.preventDefault();
+  const nome = $('#p-nome').value.replace(/\s+/g, ' ').trim().replaceAll(SEP.trim(), '');
+  const time = $('#p-time').value.replace(/\s+/g, ' ').trim().replaceAll(SEP.trim(), '');
+  $('#p-erro').hidden = !!(nome && time);
+  if (!nome || !time) return;
+  perfil = { nome, time };
+  gravar(CHAVE.perfil, perfil);
+  mostrarTela();
+  render();
+});
+$('#btn-criar').addEventListener('click', () => {
+  const bytes = new Uint8Array(12);
+  crypto.getRandomValues(bytes);
+  sala = `embaixada-${[...bytes].map(b => (b % 36).toString(36)).join('')}`;
+  gravar(CHAVE.sala, sala);
+  mostrarTela();
+  abrirAjustes();
+});
+
+// ---------- Mensagens ----------
+// Formato no ntfy: título "Nome · Time"; tags dizem o tipo (tratado, aceito, recusado, re-<id>).
+let msgs = new Map();
+function carregarMsgs() {
+  msgs = new Map();
+  const salvas = sala ? ler(CHAVE.msgs(sala)) : null;
+  if (Array.isArray(salvas)) for (const m of salvas) if (m && typeof m.id === 'string') msgs.set(m.id, m);
+}
+function guardarMsgs() {
+  const lista = [...msgs.values()].sort((a, b) => a.em - b.em).slice(-MAX_GUARDADAS);
+  gravar(CHAVE.msgs(sala), lista);
+}
+function lerEvento(ev) {
+  if (!ev || ev.event !== 'message' || typeof ev.id !== 'string') return null;
+  const titulo = typeof ev.title === 'string' ? ev.title : '';
+  const corte = titulo.lastIndexOf(SEP);
+  const nome = (corte >= 0 ? titulo.slice(0, corte) : titulo).trim() || 'Alguém';
+  const time = corte >= 0 ? titulo.slice(corte + SEP.length).trim() : '';
+  const tags = Array.isArray(ev.tags) ? ev.tags.map(String) : [];
+  const texto = typeof ev.message === 'string' ? ev.message : '';
+  const base = { id: ev.id, em: (Number(ev.time) || 0) * 1000, nome: nome.slice(0, 40), time: time.slice(0, 40), texto: texto.slice(0, 4000) };
+  if (tags.includes('tratado')) {
+    const linhas = texto.split('\n').map(l => l.trim()).filter(Boolean);
+    return { ...base, tipo: 'tratado', titulo: (linhas[0] || 'Tratado').slice(0, 80), clausulas: linhas.slice(1).map(l => l.replace(/^\d+[.)]\s*/, '')).slice(0, 20) };
+  }
+  const re = tags.find(t => t.startsWith('re-'));
+  if (re && (tags.includes('aceito') || tags.includes('recusado'))) return { ...base, tipo: tags.includes('aceito') ? 'aceito' : 'recusado', re: re.slice(3) };
+  return { ...base, tipo: 'msg' };
+}
+function receber(ev) {
+  const m = lerEvento(ev);
+  if (!m || msgs.has(m.id)) return false;
+  msgs.set(m.id, m);
+  return true;
+}
+const doMeuTime = m => perfil && mesmo(m.time, perfil.time);
+function situacao(t) {
+  // Vale a última resposta de alguém de outro time.
+  let s = 'pendente';
+  for (const m of [...msgs.values()].sort((a, b) => a.em - b.em)) {
+    if ((m.tipo === 'aceito' || m.tipo === 'recusado') && m.re === t.id && !mesmo(m.time, t.time)) s = m.tipo;
+  }
+  return s;
+}
+const hora = ms => new Date(ms).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+const ROTULO = { pendente: 'Aguardando', aceito: 'Aceito', recusado: 'Recusado' };
+
+function htmlMsg(m) {
+  const minha = doMeuTime(m);
+  const autor = `<span class="autor">${esc(m.nome)}${m.time ? ` <span class="time">${esc(m.time)}</span>` : ''}</span>`;
+  if (m.tipo === 'aceito' || m.tipo === 'recusado') {
+    const t = msgs.get(m.re);
+    return `<p class="aviso-linha ${m.tipo}">${esc(m.nome)} ${m.tipo === 'aceito' ? 'aceitou' : 'recusou'} o tratado “${esc(t ? t.titulo : 'antigo')}” · ${hora(m.em)}</p>`;
+  }
+  if (m.tipo === 'tratado') {
+    const s = situacao(m);
+    const podeResponder = !minha && s === 'pendente';
+    return `<article class="tratado" id="t-${esc(m.id)}">
+<span class="rotulo">Tratado</span>
+<h3>${esc(m.titulo)}</h3>
+${m.clausulas.length ? `<ol>${m.clausulas.map(c => `<li>${esc(c)}</li>`).join('')}</ol>` : ''}
+<p class="assinatura">Proposto por ${esc(m.nome)}${m.time ? ` (${esc(m.time)})` : ''} · ${hora(m.em)}</p>
+<span class="situacao ${s}">${ROTULO[s]}</span>
+${podeResponder ? `<div class="acoes">
+<button type="button" class="btn btn-aceitar" data-responder="aceito" data-id="${esc(m.id)}">Aceitar</button>
+<button type="button" class="btn" data-responder="recusado" data-id="${esc(m.id)}">Recusar</button>
+<button type="button" class="btn btn-contra" data-contra="${esc(m.id)}">Fazer contraproposta</button>
+</div>` : ''}
+</article>`;
+  }
+  return `<div class="msg${minha ? ' minha' : ''}">${autor}<p class="balao">${esc(m.texto)}</p><span class="hora">${hora(m.em)}</span></div>`;
+}
+function render() {
+  if (!perfil || !sala) return;
+  const lista = [...msgs.values()].sort((a, b) => a.em - b.em);
+  const conv = $('#conversa');
+  const noFim = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 80;
+  conv.innerHTML = lista.length
+    ? lista.map(htmlMsg).join('')
+    : `<div class="vazio"><h3>Sala aberta</h3><p class="dica">Mande um “salve” pro outro time ou proponha um tratado no pergaminho aqui embaixo. Convide o pessoal pelo botão de ajustes.</p></div>`;
+  if (noFim) window.scrollTo(0, document.documentElement.scrollHeight);
+  const tratados = lista.filter(m => m.tipo === 'tratado').reverse();
+  $('#lista-tratados').innerHTML = tratados.map(t => {
+    const s = situacao(t);
+    return `<li><button type="button" data-ir="${esc(t.id)}"><span class="t">${esc(t.titulo)}</span><span class="s ${s}">${ROTULO[s]}</span></button></li>`;
+  }).join('');
+  $('#lista-vazia').hidden = tratados.length > 0;
+}
+
+// ---------- Ligação com o ntfy ----------
+async function publicar(texto, tags) {
+  const res = await fetch(`${NTFY}/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ topic: sala, title: `${perfil.nome}${SEP}${perfil.time}`, message: texto, tags, click: linkConvite() }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const ev = await res.json();
+  if (receber(ev)) { guardarMsgs(); render(); window.scrollTo(0, document.documentElement.scrollHeight); }
+}
+async function buscarTudo() {
+  try {
+    const res = await fetch(`${NTFY}/${sala}/json?poll=1&since=all`, { cache: 'no-store' });
+    if (!res.ok) return;
+    let novas = false;
+    for (const linha of (await res.text()).split('\n')) {
+      if (!linha.trim()) continue;
+      try { if (receber(JSON.parse(linha))) novas = true; } catch { /* linha ruim */ }
+    }
+    if (novas) { guardarMsgs(); render(); }
+  } catch { /* sem internet: mostra o que já tem */ }
+}
+let fonte = null, iniciada = false;
+function conectar() {
+  if (fonte) fonte.close();
+  const status = $('#ao-vivo');
+  try {
+    fonte = new EventSource(`${NTFY}/${sala}/sse`);
+    fonte.onopen = () => { status.textContent = 'ao vivo'; status.classList.add('on'); };
+    fonte.onerror = () => { status.textContent = 'reconectando'; status.classList.remove('on'); };
+    fonte.onmessage = e => {
+      try { if (receber(JSON.parse(e.data))) { guardarMsgs(); render(); } } catch { /* evento ruim */ }
+    };
+  } catch { status.textContent = 'sem conexão'; }
+}
+function iniciarConversa() {
+  if (iniciada) return;
+  iniciada = true;
+  carregarMsgs();
+  render();
+  window.scrollTo(0, document.documentElement.scrollHeight);
+  buscarTudo();
+  conectar();
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && iniciada) { buscarTudo(); if (!fonte || fonte.readyState === 2) conectar(); }
+});
+
+// ---------- Enviar ----------
+const campoMsg = $('#msg');
+campoMsg.addEventListener('input', () => { campoMsg.style.height = 'auto'; campoMsg.style.height = `${Math.min(campoMsg.scrollHeight + 4, 128)}px`; });
+$('#form-msg').addEventListener('submit', async e => {
+  e.preventDefault();
+  const texto = campoMsg.value.trim();
+  if (!texto) return;
+  const botao = $('#btn-enviar');
+  botao.disabled = true;
+  try {
+    await publicar(texto, []);
+    campoMsg.value = '';
+    campoMsg.style.height = '';
+  } catch { toast('Não deu pra enviar. Confira a internet.'); }
+  finally { botao.disabled = false; }
+});
+campoMsg.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && window.matchMedia('(pointer: fine)').matches) { e.preventDefault(); $('#form-msg').requestSubmit(); } });
+
+const dlgTratado = $('#dlg-tratado');
+function abrirTratado(base) {
+  $('#t-titulo-dlg').textContent = base ? 'Contraproposta' : 'Novo tratado';
+  $('#t-titulo').value = base ? base.titulo : '';
+  $('#t-clausulas').value = base ? base.clausulas.join('\n') : '';
+  $('#t-erro').hidden = true;
+  dlgTratado.showModal();
+  if (!base) $('#t-titulo').focus();
+}
+$('#btn-novo-tratado').addEventListener('click', () => abrirTratado(null));
+$('#form-tratado').addEventListener('submit', async e => {
+  e.preventDefault();
+  const titulo = $('#t-titulo').value.replace(/\s+/g, ' ').trim();
+  const clausulas = $('#t-clausulas').value.split('\n').map(l => l.trim().replace(/^\d+[.)]\s*/, '')).filter(Boolean).slice(0, 20);
+  $('#t-erro').hidden = !!(titulo && clausulas.length);
+  if (!titulo || !clausulas.length) return;
+  const botao = $('#btn-enviar-tratado');
+  botao.disabled = true;
+  try {
+    await publicar([titulo, ...clausulas.map((c, i) => `${i + 1}. ${c}`)].join('\n'), ['scroll', 'tratado']);
+    dlgTratado.close();
+  } catch { toast('Não deu pra enviar o tratado. Confira a internet.'); }
+  finally { botao.disabled = false; }
+});
+$('#conversa').addEventListener('click', async e => {
+  const r = e.target.closest('[data-responder]');
+  const c = e.target.closest('[data-contra]');
+  if (c) { const t = msgs.get(c.dataset.contra); if (t) abrirTratado(t); return; }
+  if (!r) return;
+  const t = msgs.get(r.dataset.id);
+  if (!t) return;
+  const aceito = r.dataset.responder === 'aceito';
+  r.disabled = true;
+  try {
+    await publicar(`${aceito ? 'Aceitou' : 'Recusou'} o tratado: ${t.titulo}`, [aceito ? 'handshake' : 'x', aceito ? 'aceito' : 'recusado', `re-${t.id}`]);
+  } catch { r.disabled = false; toast('Não deu pra responder. Confira a internet.'); }
+});
+
+// ---------- Tratados e ajustes ----------
+const dlgLista = $('#dlg-lista'), dlgAjustes = $('#dlg-ajustes');
+$('#btn-tratados').addEventListener('click', () => dlgLista.showModal());
+$('#lista-tratados').addEventListener('click', e => {
+  const b = e.target.closest('[data-ir]');
+  if (!b) return;
+  dlgLista.close();
+  const alvo = document.getElementById(`t-${b.dataset.ir}`);
+  if (alvo) alvo.scrollIntoView({ block: 'center' });
+});
+function abrirAjustes() {
+  $('#a-link').textContent = linkConvite();
+  $('#a-whats').href = `https://wa.me/?text=${encodeURIComponent(`Bora negociar? Entra na Embaixada do server: ${linkConvite()}`)}`;
+  $('#a-sala').textContent = sala;
+  $('#a-perfil').textContent = `${perfil.nome} · ${perfil.time}`;
+  $('#a-sair').hidden = false;
+  $('#a-sair-sim').hidden = true;
+  if (!dlgAjustes.open) dlgAjustes.showModal();
+}
+$('#btn-ajustes').addEventListener('click', abrirAjustes);
+$('#a-copiar').addEventListener('click', async e => { const b = e.currentTarget; b.textContent = (await copiarTexto(linkConvite())) ? 'Copiado!' : 'Não deu'; setTimeout(() => { b.textContent = 'Copiar link'; }, 1500); });
+$('#a-copiar-sala').addEventListener('click', async e => { const b = e.currentTarget; b.textContent = (await copiarTexto(sala)) ? 'Copiado!' : 'Não deu'; setTimeout(() => { b.textContent = 'Copiar nome da sala'; }, 1500); });
+$('#a-editar').addEventListener('click', () => {
+  dlgAjustes.close();
+  $('#p-nome').value = perfil.nome;
+  $('#p-time').value = perfil.time;
+  perfil = null;
+  apagar(CHAVE.perfil);
+  mostrarTela();
+});
+$('#a-sair').addEventListener('click', () => { $('#a-sair').hidden = true; $('#a-sair-sim').hidden = false; });
+$('#a-sair-sim').addEventListener('click', () => {
+  dlgAjustes.close();
+  if (fonte) fonte.close();
+  apagar(CHAVE.sala);
+  sala = null;
+  iniciada = false;
+  msgs = new Map();
+  mostrarTela();
+});
+
+document.addEventListener('click', e => { const b = e.target.closest('[data-fechar]'); if (b) b.closest('dialog').close(); });
+document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));
+
+// ---------- Início ----------
+document.querySelectorAll('[data-ico]').forEach(el => { el.innerHTML = svg(el.dataset.ico); });
+mostrarTela();
+try {
+  if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('../sw.js').catch(() => {});
+} catch { /* sem service worker aqui */ }
+})();
+</script>
+</body>
+</html>
