@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ResenhaCraft</title>
+<meta name="description" content="Veja se o server ResenhaCraft está ligado e quantos estão jogando.">
+<meta name="theme-color" content="#10151F">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ResenhaCraft">
+<link rel="preload" href="../fonts/jersey10-latin.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+/* DESIGN (segue ../DESIGN.md):
+   Tipografia: Jersey 10 para títulos, status e números; fonte do sistema para o texto. Escala 12/14/16/20/28/40.
+   Cores: os mesmos tokens do Coords. A cena em pixel art tem cores próprias: dia quando o server está ligado,
+   noite com lua e "Zzz" quando está dormindo.
+   Espaçamento: 4/8/16/24/40/64. Layout: uma coluna até 560px. Cena em cima, status, endereço e botões. */
+@font-face {
+  font-family: "Jersey 10";
+  src: url("../fonts/jersey10-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+:root {
+  color-scheme: dark;
+  --bg: #10151F;
+  --surface: #182030;
+  --surface-2: #212B3F;
+  --line: #2A3448;
+  --edge: #6E7A95;
+  --text: #EEF2F8;
+  --text-dim: #A3AFC4;
+  --torch: #FFB938;
+  --torch-edge: #C4861C;
+  --on-torch: #241600;
+  --ow: #74C94F;
+  --danger: #FF7A70;
+  --estado: var(--text-dim);
+
+  --font-pixel: "Jersey 10", ui-monospace, "SF Mono", "Roboto Mono", monospace;
+  --font-text: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fs-12: 0.75rem;
+  --fs-14: 0.875rem;
+  --fs-16: 1rem;
+  --fs-20: 1.25rem;
+  --fs-28: 1.75rem;
+  --fs-40: 2.5rem;
+  --sp-4: 4px;
+  --sp-8: 8px;
+  --sp-16: 16px;
+  --sp-24: 24px;
+  --sp-40: 40px;
+  --tap: 44px;
+  --relevo: inset 0 -3px 0 rgb(0 0 0 / 0.35), inset 0 2px 0 rgb(255 255 255 / 0.18);
+
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.on { --estado: var(--ow); }
+.dormindo { --estado: var(--torch); }
+.erro { --estado: var(--danger); }
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 var(--fs-16)/1.5 var(--font-text);
+  font-synthesis: none;
+  -webkit-tap-highlight-color: transparent;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); background: var(--bg); z-index: 10; }
+h1, h2, p { margin: 0; }
+h1, h2 { font-family: var(--font-pixel); font-weight: 400; line-height: 1; letter-spacing: 0.02em; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--torch); outline-offset: 2px; }
+
+.wrap {
+  max-width: 560px;
+  margin-inline: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: var(--sp-16) var(--sp-40);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-24);
+}
+.topo { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-16); }
+.topo h1 { font-size: var(--fs-40); }
+.edicao { font: 400 var(--fs-20)/1 var(--font-pixel); color: var(--text-dim); letter-spacing: 0.04em; }
+
+.cena { display: block; width: 100%; height: auto; aspect-ratio: 2 / 1; border: 2px solid var(--line); image-rendering: pixelated; }
+.nuvem { animation: vento 60s linear infinite; }
+.nuvem.lenta { animation-duration: 90s; }
+@keyframes vento { from { transform: translateX(-30px); } to { transform: translateX(110px); } }
+.chama { animation: piscar 0.6s steps(2) infinite; }
+@keyframes piscar { 50% { opacity: 0.65; } }
+.zzz { animation: sono 2.4s steps(3) infinite; }
+@keyframes sono { 0% { transform: translateY(1px); opacity: 0.4; } 100% { transform: translateY(-2px); opacity: 1; } }
+
+.status { display: flex; flex-direction: column; gap: var(--sp-8); }
+.selo { display: flex; align-items: center; gap: var(--sp-16); }
+.luz { flex: none; width: var(--sp-16); height: var(--sp-16); background: var(--estado); box-shadow: 0 0 0 var(--sp-4) color-mix(in srgb, var(--estado) 25%, transparent); }
+.on .luz { animation: pulsar 1.6s steps(2) infinite; }
+@keyframes pulsar { 50% { box-shadow: 0 0 0 var(--sp-8) color-mix(in srgb, var(--estado) 15%, transparent); } }
+.selo h2 { font-size: var(--fs-40); color: var(--estado); }
+.frase { font-size: var(--fs-20); font-weight: 600; }
+.dica { font-size: var(--fs-14); color: var(--text-dim); }
+
+.info { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-8); margin: 0; }
+.info div { display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; padding: var(--sp-8) var(--sp-8) var(--sp-16); background: var(--surface-2); }
+.info dt { font-size: var(--fs-12); font-weight: 600; color: var(--text-dim); }
+.info dd { margin: 0; font: 400 var(--fs-28)/1 var(--font-pixel); overflow-wrap: anywhere; }
+.motd { padding: var(--sp-16); border: 2px dashed var(--line); font: 400 var(--fs-20)/1.2 var(--font-pixel); color: var(--text-dim); overflow-wrap: anywhere; }
+
+.endereco { display: flex; flex-direction: column; gap: var(--sp-8); padding: var(--sp-16); background: var(--surface); border: 2px solid var(--line); }
+.endereco h2 { font-size: var(--fs-20); color: var(--text-dim); letter-spacing: 0.04em; text-transform: uppercase; }
+.linha { display: flex; align-items: center; gap: var(--sp-8); }
+.linha .valor { flex: 1; min-width: 0; font: 400 var(--fs-28)/1 var(--font-pixel); overflow-wrap: anywhere; }
+.linha .rotulo { font-size: var(--fs-14); color: var(--text-dim); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap);
+  padding-block: var(--sp-8);
+  padding-inline: var(--sp-16);
+  border: 2px solid var(--edge);
+  border-radius: 2px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: 600 var(--fs-16)/1.2 var(--font-text);
+  text-align: center;
+  text-decoration: none;
+  box-shadow: var(--relevo);
+}
+.btn:active { transform: translateY(1px); box-shadow: none; }
+.btn:disabled { opacity: 0.5; cursor: progress; transform: none; }
+.btn-primary { background: var(--torch); border-color: var(--torch-edge); color: var(--on-torch); }
+.acoes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-8); }
+.rodape { font-size: var(--fs-12); color: var(--text-dim); text-align: center; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body>
+<main class="wrap" id="app">
+  <header class="topo">
+    <h1>ResenhaCraft</h1>
+    <span class="edicao">Bedrock</span>
+  </header>
+
+  <div id="cena" aria-hidden="true"></div>
+
+  <section class="status" aria-live="polite">
+    <div class="selo"><span class="luz"></span><h2 id="estado">Procurando…</h2></div>
+    <p class="frase" id="frase">Vendo se o server está ligado.</p>
+    <p class="dica" id="dica"></p>
+  </section>
+
+  <dl class="info" id="info" hidden>
+    <div><dt>Jogando</dt><dd id="i-jogadores">–</dd></div>
+    <div><dt>Versão</dt><dd id="i-versao">–</dd></div>
+    <div><dt>Modo</dt><dd id="i-modo">–</dd></div>
+  </dl>
+  <p class="motd" id="motd" hidden></p>
+
+  <div class="acoes">
+    <button type="button" class="btn btn-primary" id="atualizar">Atualizar</button>
+    <a class="btn" href="https://aternos.org/servers/" target="_blank" rel="noopener">Ligar no Aternos</a>
+  </div>
+
+  <section class="endereco" aria-labelledby="h-endereco">
+    <h2 id="h-endereco">Pra entrar no server</h2>
+    <div class="linha">
+      <div class="valor"><span class="rotulo">Endereço</span><br><span id="host"></span></div>
+      <button type="button" class="btn" data-copiar="host">Copiar</button>
+    </div>
+    <div class="linha">
+      <div class="valor"><span class="rotulo">Porta</span><br><span id="porta"></span></div>
+      <button type="button" class="btn" data-copiar="porta">Copiar</button>
+    </div>
+  </section>
+
+  <p class="rodape" id="atualizado"></p>
+  <noscript><p>Ative o JavaScript para ver o server.</p></noscript>
+</main>
+
+<script>
+(() => {
+'use strict';
+const HOST = 'resenhacraft1628.aternos.me';
+const PORTA = 19132;
+const CHAVE = 'resenhacraft.status.v1';
+const MAX_BONECOS = 6;
+
+const $ = s => document.querySelector(s);
+$('#host').textContent = HOST;
+$('#porta').textContent = String(PORTA);
+
+// ---------- Cena em pixel art (grade 96x48) ----------
+const CAMISAS = ['#E5533D', '#3E8EDE', '#F2C94C', '#9B59D0', '#2EBD85', '#F08A24'];
+function cena(estado, jogadores) {
+  const dia = estado === 'on';
+  const p = [];
+  const r = (x, y, w, h, c, extra = '') => p.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}"${extra}/>`);
+  (dia ? ['#4FA3E8', '#62B1EE', '#78BFF2', '#90CDF5'] : ['#070B1E', '#0B1230', '#111A40', '#18244F']).forEach((c, i) => r(0, i * 9, 96, 9, c));
+  if (dia) {
+    r(80, 5, 7, 7, '#FFD23F'); r(81, 4, 5, 1, '#FFD23F'); r(81, 12, 5, 1, '#FFD23F'); r(79, 6, 1, 5, '#FFD23F'); r(87, 6, 1, 5, '#FFD23F');
+    p.push('<g class="nuvem">'); r(8, 7, 12, 3, '#FFFFFF'); r(11, 5, 6, 2, '#FFFFFF'); p.push('</g>');
+    p.push('<g class="nuvem lenta">'); r(40, 12, 10, 2, '#FFFFFF'); r(42, 10, 5, 2, '#FFFFFF'); p.push('</g>');
+  } else {
+    r(78, 5, 7, 7, '#E8E6D3'); r(80, 7, 2, 2, '#C9C6AE'); r(83, 9, 1, 1, '#C9C6AE');
+    [[6, 4], [15, 11], [24, 6], [37, 3], [46, 13], [58, 7], [67, 2], [90, 16], [12, 19], [70, 15]].forEach(([x, y]) => r(x, y, 1, 1, '#FFFFFF'));
+  }
+  // mar
+  r(0, 36, 96, 12, dia ? '#1F6FB5' : '#0D2550');
+  [[4, 39], [18, 43], [33, 40], [70, 42], [84, 39], [56, 45]].forEach(([x, y]) => r(x, y, 4, 1, dia ? '#4C95D3' : '#1B3B74'));
+  // ilha
+  const areia = dia ? '#E3C77E' : '#6E6345';
+  r(20, 35, 56, 2, areia); r(24, 32, 48, 3, areia);
+  r(28, 30, 40, 2, dia ? '#74C94F' : '#2F5A2A');
+  // coqueiro
+  const tronco = dia ? '#8B5A2B' : '#4A3420', folha = dia ? '#3FA34D' : '#1E4A27';
+  r(31, 20, 2, 10, tronco); r(30, 23, 1, 2, tronco);
+  r(27, 18, 10, 2, folha); r(25, 20, 3, 1, folha); r(36, 20, 3, 1, folha); r(24, 21, 2, 1, folha); r(38, 21, 2, 1, folha); r(30, 17, 4, 1, folha);
+  // casa
+  r(52, 24, 12, 6, dia ? '#9C6B3C' : '#4D3620');
+  r(51, 22, 14, 2, dia ? '#7A2E22' : '#3B1A16'); r(53, 21, 10, 1, dia ? '#7A2E22' : '#3B1A16');
+  r(57, 26, 2, 4, dia ? '#4A2F18' : '#24170C');
+  r(54, 25, 2, 2, dia ? '#FFE08A' : '#1A2238'); r(60, 25, 2, 2, dia ? '#FFE08A' : '#1A2238');
+  // tocha: acesa quando o server está ligado
+  r(66, 26, 1, 4, '#6B4A2B');
+  if (dia) p.push(`<g class="chama"><rect x="66" y="24" width="1" height="2" fill="#FFB938"/><rect x="65" y="25" width="3" height="1" fill="#FF8A1F" opacity=".7"/></g>`);
+  // dormindo: Zzz
+  if (estado === 'dormindo') {
+    p.push('<g class="zzz" fill="#C7D2FF">');
+    [[66, 14, 3], [70, 10, 4]].forEach(([x, y, t]) => { r(x, y, t, 1, '#C7D2FF'); r(x + t - 2, y + 1, 1, 1, '#C7D2FF'); r(x, y + 2, t, 1, '#C7D2FF'); });
+    p.push('</g>');
+  }
+  // jogadores
+  const n = dia ? Math.min(jogadores, MAX_BONECOS) : 0;
+  for (let i = 0; i < n; i++) {
+    const x = 34 + i * 3;
+    r(x, 24, 2, 2, '#E0A982'); r(x, 26, 2, 2, CAMISAS[i]); r(x, 28, 2, 2, '#2B3A67');
+  }
+  return `<svg class="cena" viewBox="0 0 96 48" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">${p.join('')}</svg>`;
+}
+
+// ---------- Status do server ----------
+async function pegar(url) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const res = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } finally { clearTimeout(timer); }
+}
+const texto = v => (typeof v === 'string' ? v.trim() : '');
+const numeroOuZero = v => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0);
+// Usa a mcstatus.io e, se ela falhar, a mcsrvstat.us. As duas respondem no mesmo formato depois daqui.
+async function buscarStatus() {
+  try {
+    const d = await pegar(`https://api.mcstatus.io/v2/status/bedrock/${HOST}:${PORTA}`);
+    return { online: d.online === true, jogadores: numeroOuZero(d.players?.online), max: numeroOuZero(d.players?.max),
+      versao: texto(d.version?.name), modo: texto(d.gamemode), motd: texto(d.motd?.clean) };
+  } catch {
+    const d = await pegar(`https://api.mcsrvstat.us/bedrock/3/${HOST}:${PORTA}`);
+    return { online: d.online === true, jogadores: numeroOuZero(d.players?.online), max: numeroOuZero(d.players?.max),
+      versao: texto(d.version), modo: texto(d.gamemode), motd: Array.isArray(d.motd?.clean) ? d.motd.clean.map(texto).join(' ') : '' };
+  }
+}
+const MODOS = { survival: 'Survival', creative: 'Criativo', adventure: 'Aventura', spectator: 'Espectador' };
+
+function mostrar(s, quando) {
+  // O Aternos às vezes responde "online" com a mensagem de offline enquanto o server dorme.
+  const dormindo = !s.online || /offline/i.test(`${s.versao} ${s.motd}`);
+  const estado = dormindo ? 'dormindo' : 'on';
+  const app = $('#app');
+  app.classList.remove('on', 'dormindo', 'erro');
+  app.classList.add(estado);
+  $('#cena').innerHTML = cena(estado, s.jogadores);
+  $('#estado').textContent = dormindo ? 'Dormindo' : 'Online';
+  if (dormindo) {
+    $('#frase').textContent = 'O server está desligado.';
+    $('#dica').textContent = 'No Aternos o server dorme quando ninguém joga. Toque em "Ligar no Aternos" pra acordar.';
+  } else {
+    const n = s.jogadores;
+    $('#frase').textContent = n === 0 ? 'Ligado, mas ninguém jogando.' : n === 1 ? '1 pessoa jogando agora!' : `${n} pessoas jogando agora!`;
+    $('#dica').textContent = n > MAX_BONECOS ? `A ilha só cabe ${MAX_BONECOS} bonecos, mas tem ${n} on.` : 'Server Bedrock mostra quantos estão on, mas não os nomes.';
+  }
+  $('#info').hidden = dormindo;
+  $('#i-jogadores').textContent = s.max ? `${s.jogadores}/${s.max}` : String(s.jogadores);
+  $('#i-versao').textContent = s.versao || '–';
+  $('#i-modo').textContent = MODOS[s.modo.toLowerCase()] || s.modo || '–';
+  $('#motd').hidden = dormindo || !s.motd;
+  $('#motd').textContent = s.motd;
+  ultimo = quando;
+  relogio();
+}
+function mostrarErro() {
+  const app = $('#app');
+  app.classList.remove('on', 'dormindo');
+  app.classList.add('erro');
+  if (!$('#cena').innerHTML) $('#cena').innerHTML = cena('erro', 0);
+  $('#estado').textContent = 'Sem resposta';
+  $('#frase').textContent = 'Não deu pra ver o server agora.';
+  $('#dica').textContent = 'Confira a internet e toque em Atualizar.';
+}
+
+let ultimo = 0, buscando = false;
+function relogio() {
+  if (!ultimo) return;
+  const seg = Math.round((Date.now() - ultimo) / 1000);
+  const ha = seg < 10 ? 'agora mesmo' : seg < 60 ? `há ${seg} s` : `há ${Math.floor(seg / 60)} min`;
+  $('#atualizado').textContent = `Atualizado ${ha}. Atualiza sozinho a cada minuto.`;
+}
+async function atualizar() {
+  if (buscando) return;
+  buscando = true;
+  const botao = $('#atualizar');
+  botao.disabled = true;
+  botao.textContent = 'Atualizando…';
+  try {
+    const s = await buscarStatus();
+    const agora = Date.now();
+    mostrar(s, agora);
+    try { localStorage.setItem(CHAVE, JSON.stringify({ s, quando: agora })); } catch { /* sem armazenamento */ }
+  } catch {
+    mostrarErro();
+  } finally {
+    buscando = false;
+    botao.disabled = false;
+    botao.textContent = 'Atualizar';
+  }
+}
+
+// ---------- Copiar endereço e porta ----------
+async function copiarTexto(t) {
+  try { await navigator.clipboard.writeText(t); return true; } catch { /* tenta o jeito antigo */ }
+  try {
+    const a = document.createElement('textarea');
+    a.value = t;
+    a.setAttribute('readonly', '');
+    a.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.append(a);
+    a.select();
+    const ok = document.execCommand('copy');
+    a.remove();
+    return ok;
+  } catch { return false; }
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-copiar]');
+  if (!b) return;
+  const ok = await copiarTexto(b.dataset.copiar === 'host' ? HOST : String(PORTA));
+  b.textContent = ok ? 'Copiado!' : 'Não deu';
+  setTimeout(() => { b.textContent = 'Copiar'; }, 1500);
+});
+
+// ---------- Início ----------
+$('#atualizar').addEventListener('click', atualizar);
+try {
+  const salvo = JSON.parse(localStorage.getItem(CHAVE) || 'null');
+  if (salvo && salvo.s && typeof salvo.quando === 'number') mostrar(salvo.s, salvo.quando);
+} catch { /* nada salvo */ }
+if (!$('#cena').innerHTML) $('#cena').innerHTML = cena('erro', 0);
+atualizar();
+setInterval(() => { if (document.visibilityState === 'visible') atualizar(); }, 60000);
+setInterval(relogio, 5000);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && Date.now() - ultimo > 30000) atualizar();
+});
+try {
+  if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('../sw.js').catch(() => {});
+} catch { /* sem service worker aqui */ }
+})();
+</script>
+</body>
+</html>

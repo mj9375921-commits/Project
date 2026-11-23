@@ -5,6 +5,8 @@ coordenadas entre Overworld e Nether (÷ 8). Ele instala no celular como app e f
 
 Link do app (depois de ligar o GitHub Pages): https://mj9375921-commits.github.io/Project/
 
+Status do server ResenhaCraft (quem está online): https://mj9375921-commits.github.io/Project/server/
+
 **Ligar o GitHub Pages (uma vez só):**
 
 1. No repositório, abra **Settings → Pages**.
