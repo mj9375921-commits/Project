@@ -1,0 +1,12 @@
+{
+  "appId": "io.github.mj9375921commits.bussola",
+  "appName": "Bússola",
+  "webDir": "www",
+  "server": {
+    "url": "https://mj9375921-commits.github.io/Project/bussola/",
+    "androidScheme": "https"
+  },
+  "android": {
+    "backgroundColor": "#10151F"
+  }
+}

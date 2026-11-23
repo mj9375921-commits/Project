@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<title>Bússola</title>
+<meta name="description" content="Mapa das estruturas do seu mundo de Minecraft Bedrock e GPS até elas.">
+<meta name="theme-color" content="#10151F">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preload" href="../fonts/jersey10-latin.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+/* DESIGN (segue ../DESIGN.md):
+   Tipografia: Jersey 10 para títulos, números e distâncias; fonte do sistema para o texto. Escala 12/14/16/20/28/40.
+   Cores: tokens do Coords. Cada tipo de estrutura tem uma cor no mapa; o destino do GPS fica em cor de tocha.
+   Espaçamento: 4/8/16/24/40/64. Layout: app de uma tela; o mapa ocupa tudo entre o topo e a barra de abas. */
+@font-face { font-family: "Jersey 10"; src: url("../fonts/jersey10-latin.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+:root {
+  color-scheme: dark;
+  --bg: #10151F;
+  --surface: #182030;
+  --surface-2: #212B3F;
+  --line: #2A3448;
+  --edge: #6E7A95;
+  --text: #EEF2F8;
+  --text-dim: #A3AFC4;
+  --torch: #FFB938;
+  --torch-edge: #C4861C;
+  --on-torch: #241600;
+  --ow: #74C94F;
+  --nether: #FF6B57;
+  --danger: #FF7A70;
+  --scrim: rgb(4 7 12 / 0.72);
+  --font-pixel: "Jersey 10", ui-monospace, "SF Mono", "Roboto Mono", monospace;
+  --font-text: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fs-12: 0.75rem; --fs-14: 0.875rem; --fs-16: 1rem; --fs-20: 1.25rem; --fs-28: 1.75rem; --fs-40: 2.5rem;
+  --sp-4: 4px; --sp-8: 8px; --sp-16: 16px; --sp-24: 24px; --sp-40: 40px;
+  --tap: 44px; --topo-h: 60px; --abas-h: 64px;
+  --relevo: inset 0 -3px 0 rgb(0 0 0 / 0.35), inset 0 2px 0 rgb(255 255 255 / 0.18);
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html:has(dialog[open]) { overflow: hidden; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 400 var(--fs-16)/1.5 var(--font-text); font-synthesis: none; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+h1, h2, h3, p { margin: 0; }
+h1, h2, h3 { font-family: var(--font-pixel); font-weight: 400; line-height: 1; letter-spacing: 0.02em; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--torch); outline-offset: 2px; }
+.ico { display: block; width: 20px; height: 20px; flex: none; }
+.wrap { max-width: 560px; margin-inline: auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-8); min-height: var(--tap); padding-block: var(--sp-8); padding-inline: var(--sp-16); border: 2px solid var(--edge); border-radius: 2px; background: var(--surface-2); color: var(--text); font: 600 var(--fs-16)/1.2 var(--font-text); text-align: center; box-shadow: var(--relevo); }
+.btn:active { transform: translateY(1px); box-shadow: none; }
+.btn-primary { background: var(--torch); border-color: var(--torch-edge); color: var(--on-torch); }
+.btn-block { width: 100%; }
+.btn-icone { display: grid; place-items: center; width: var(--tap); height: var(--tap); padding: 0; border: 2px solid var(--edge); border-radius: 2px; background: var(--surface-2); color: var(--text); box-shadow: var(--relevo); }
+.txt { width: 100%; min-height: var(--tap); padding-block: var(--sp-8); padding-inline: var(--sp-16); border: 2px solid var(--edge); border-radius: 2px; background: var(--surface-2); color: var(--text); font: 400 var(--fs-16)/1.4 var(--font-text); -webkit-appearance: none; appearance: none; }
+.txt:focus { outline: none; border-color: var(--torch); }
+.txt::placeholder { color: var(--text-dim); opacity: 1; }
+.campo { display: flex; flex-direction: column; gap: var(--sp-8); }
+.campo label, .rotulo { font-size: var(--fs-14); font-weight: 600; color: var(--text-dim); }
+.dica { font-size: var(--fs-14); color: var(--text-dim); }
+.erro { font-size: var(--fs-14); color: var(--danger); }
+.num { font: 400 var(--fs-28)/1 var(--font-pixel); font-variant-numeric: tabular-nums; }
+
+/* Primeira vez */
+.entrada { display: flex; flex-direction: column; gap: var(--sp-24); padding-block: var(--sp-40); }
+.entrada h1 { font-size: var(--fs-40); display: flex; align-items: center; gap: var(--sp-8); }
+.entrada h1 .ico { width: 40px; height: 40px; color: var(--torch); }
+
+/* Estrutura do app */
+#app { display: flex; flex-direction: column; height: 100%; padding-top: env(safe-area-inset-top, 0px); }
+.topo { flex: none; display: flex; align-items: center; gap: var(--sp-8); height: var(--topo-h); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); border-bottom: 2px solid var(--line); }
+.topo h1 { flex: 1; font-size: var(--fs-28); display: flex; align-items: center; gap: var(--sp-8); min-width: 0; }
+.topo h1 .ico { width: 30px; height: 30px; color: var(--torch); }
+.dims { display: flex; border: 2px solid var(--edge); }
+.dims button { min-height: 40px; padding: 0 var(--sp-8); border: 0; background: var(--surface-2); color: var(--text-dim); font: 400 var(--fs-20)/1 var(--font-pixel); }
+.dims button[aria-pressed="true"] { background: var(--torch); color: var(--on-torch); }
+.dims button[data-dim="n"][aria-pressed="true"] { background: var(--nether); color: #2A0A05; }
+.tela { flex: 1; min-height: 0; overflow-y: auto; }
+#tela-mapa { position: relative; overflow: hidden; }
+#mapa { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.sobre-mapa { position: absolute; display: flex; gap: var(--sp-8); }
+.filtros { top: var(--sp-8); left: 0; right: 0; padding-inline: var(--sp-8); overflow-x: auto; scrollbar-width: none; }
+.filtros::-webkit-scrollbar { display: none; }
+.chip { flex: none; display: inline-flex; align-items: center; gap: var(--sp-4); min-height: 36px; padding: 0 var(--sp-8); border: 2px solid var(--line); background: rgb(16 21 31 / 0.88); color: var(--text-dim); font-size: var(--fs-14); font-weight: 600; white-space: nowrap; }
+.chip .ico { width: 20px; height: 20px; }
+.chip[aria-pressed="true"] { border-color: var(--cor); color: var(--text); }
+.chip[aria-pressed="true"] .ico { color: var(--cor); }
+.chip[aria-pressed="false"] .ico { color: var(--text-dim); }
+.zoom { right: var(--sp-8); bottom: var(--sp-16); flex-direction: column; }
+.escala { left: var(--sp-8); bottom: var(--sp-16); padding: var(--sp-4) var(--sp-8); background: rgb(16 21 31 / 0.88); font: 400 var(--fs-20)/1 var(--font-pixel); color: var(--text); }
+.carregando { left: 50%; top: 56px; transform: translateX(-50%); padding: var(--sp-4) var(--sp-16); background: rgb(16 21 31 / 0.88); font-size: var(--fs-14); color: var(--text-dim); }
+
+.abas { flex: none; display: grid; grid-template-columns: repeat(3, 1fr); height: calc(var(--abas-h) + env(safe-area-inset-bottom, 0px)); padding-bottom: env(safe-area-inset-bottom, 0px); border-top: 2px solid var(--line); background: var(--surface); }
+.aba { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--sp-4); border: 0; background: none; color: var(--text-dim); font-size: var(--fs-12); font-weight: 600; }
+.aba[aria-current="page"] { color: var(--torch); }
+.aba[aria-current="page"]::before { content: ""; position: absolute; top: -2px; left: 30%; right: 30%; height: 4px; background: var(--torch); }
+
+/* Lugares */
+.secao { display: flex; flex-direction: column; gap: var(--sp-16); padding-block: var(--sp-24); }
+.secao h2 { font-size: var(--fs-28); }
+.lista { list-style: none; margin: 0; padding: 0; }
+.lista > li + li { border-top: 1px solid var(--line); }
+.item { display: flex; align-items: center; gap: var(--sp-16); width: 100%; padding-block: var(--sp-8); border: 0; background: none; color: inherit; text-align: left; min-height: 56px; }
+.tile { flex: none; display: grid; place-items: center; width: 40px; height: 40px; background: color-mix(in srgb, var(--cor) 18%, var(--bg)); color: var(--cor); }
+.item-corpo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-4); }
+.item-nome { font-weight: 600; overflow-wrap: anywhere; }
+.item-meta { font-size: var(--fs-14); color: var(--text-dim); }
+.dist { flex: none; text-align: right; }
+.dist .num { font-size: var(--fs-28); }
+.dist .dir { display: block; font-size: var(--fs-12); color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.aviso { display: flex; flex-direction: column; gap: var(--sp-8); padding: var(--sp-16); border: 2px solid var(--line); background: var(--surface); }
+.aviso h3 { font-size: var(--fs-20); }
+
+/* GPS */
+.posicao { display: grid; grid-template-columns: var(--sp-24) minmax(0, 1fr); gap: var(--sp-8); align-items: center; }
+.eixo { font: 400 var(--fs-28)/1 var(--font-pixel); color: var(--text-dim); text-align: center; }
+.cell { display: flex; min-width: 0; }
+.cell .txt { border-right: 0; font: 400 var(--fs-28)/1 var(--font-pixel); height: 52px; }
+.pm { flex: none; display: grid; place-items: center; width: var(--tap); height: 52px; padding: 0; border: 2px solid var(--edge); background: var(--surface); color: var(--text-dim); font: 400 var(--fs-28)/1 var(--font-pixel); }
+.cell:focus-within .txt, .cell:focus-within .pm { border-color: var(--torch); }
+.destino { display: flex; align-items: center; gap: var(--sp-16); padding: var(--sp-16); border: 2px solid var(--torch); background: color-mix(in srgb, var(--torch) 8%, var(--surface)); }
+.destino .item-corpo { gap: var(--sp-4); }
+.seta-caixa { display: flex; flex-direction: column; align-items: center; gap: var(--sp-8); padding-block: var(--sp-16); }
+#seta { width: 160px; height: 160px; color: var(--torch); transition: transform 0.3s; }
+.rumo { font: 400 var(--fs-40)/1 var(--font-pixel); text-align: center; }
+.falta { font: 400 var(--fs-28)/1 var(--font-pixel); color: var(--text-dim); text-align: center; }
+.passos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-8); }
+.passo { display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--sp-16); background: var(--surface-2); }
+.passo .num { font-size: var(--fs-28); }
+.passo .dica { font-size: var(--fs-12); }
+
+/* Folhas */
+dialog.sheet { width: 100%; max-width: 560px; max-height: 92vh; max-height: 92dvh; margin: auto auto 0; padding: 0; border: 0; border-radius: 8px 8px 0 0; background: var(--surface); color: var(--text); overflow-y: auto; overscroll-behavior: contain; }
+dialog.sheet[open] { animation: subir 0.2s ease-out; }
+dialog.sheet::backdrop { background: var(--scrim); }
+@keyframes subir { from { transform: translateY(var(--sp-24)); opacity: 0; } }
+.sheet-in { display: flex; flex-direction: column; gap: var(--sp-24); padding-top: var(--sp-24); padding-bottom: calc(var(--sp-24) + env(safe-area-inset-bottom, 0px)); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.sheet-head { display: flex; align-items: flex-start; gap: var(--sp-16); }
+.sheet-head h2 { flex: 1; min-width: 0; font-size: var(--fs-28); overflow-wrap: anywhere; }
+.btn-x { flex: none; display: grid; place-items: center; width: var(--tap); height: var(--tap); margin-top: calc(-1 * var(--sp-8)); margin-right: calc(-1 * var(--sp-8)); padding: 0; border: 0; background: none; color: var(--text-dim); }
+.grade2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-8); }
+.span-2 { grid-column: 1 / -1; }
+.info { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-8); }
+.info div { display: flex; flex-direction: column; gap: var(--sp-4); padding: var(--sp-8) var(--sp-8) var(--sp-16); background: var(--surface-2); min-width: 0; }
+.info .rotulo { font-size: var(--fs-12); }
+.info .num { overflow-wrap: anywhere; }
+
+.toast { position: fixed; z-index: 20; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(var(--abas-h) + env(safe-area-inset-bottom, 0px) + var(--sp-8)); max-width: 528px; min-height: var(--tap); margin-inline: auto; display: flex; align-items: center; padding: var(--sp-8) var(--sp-16); background: var(--text); color: var(--bg); font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<!-- Primeira vez: a seed -->
+<main class="wrap entrada" id="tela-seed" hidden>
+  <h1><span data-ico="bussola"></span>Bússola</h1>
+  <p>O mapa do seu mundo: vilas, templos, cidades ancestrais, câmaras de desafio, fortalezas e bastiões. E um GPS pra chegar lá.</p>
+  <form class="campo" id="form-seed" novalidate>
+    <label for="seed">Seed do mundo</label>
+    <input class="txt num" id="seed" inputmode="numeric" autocomplete="off" placeholder="Ex.: 123456789">
+    <p class="dica">A seed fica só neste celular. Ela não vai pra internet.</p>
+    <p class="erro" id="seed-erro" hidden>Digite só números (pode ter sinal de menos no começo).</p>
+    <button type="submit" class="btn btn-primary btn-block">Abrir o mapa</button>
+  </form>
+</main>
+
+<div id="app" hidden>
+  <header class="topo">
+    <h1><span data-ico="bussola"></span>Bússola</h1>
+    <div class="dims" role="group" aria-label="Dimensão">
+      <button type="button" data-dim="o" aria-pressed="true">Mundo</button>
+      <button type="button" data-dim="n" aria-pressed="false">Nether</button>
+    </div>
+    <button type="button" class="btn-icone" id="btn-ajustes" aria-label="Seed e ajustes"><span data-ico="ajustes"></span></button>
+  </header>
+
+  <section class="tela" id="tela-mapa" aria-label="Mapa">
+    <canvas id="mapa" aria-label="Mapa do mundo. Toque numa estrutura pra ver os detalhes."></canvas>
+    <div class="sobre-mapa filtros" id="filtros" role="group" aria-label="O que mostrar no mapa"></div>
+    <p class="sobre-mapa carregando" id="carregando" hidden>Gerando o mapa…</p>
+    <p class="sobre-mapa escala" id="escala"></p>
+    <div class="sobre-mapa zoom">
+      <button type="button" class="btn-icone" id="zoom-mais" aria-label="Aproximar"><span data-ico="mais"></span></button>
+      <button type="button" class="btn-icone" id="zoom-menos" aria-label="Afastar"><span data-ico="menos"></span></button>
+      <button type="button" class="btn-icone" id="ir-mim" aria-label="Centralizar em mim"><span data-ico="voce"></span></button>
+    </div>
+  </section>
+
+  <section class="tela" id="tela-lugares" aria-labelledby="h-lugares" hidden>
+    <div class="wrap secao">
+      <h2 id="h-lugares">Perto de você</h2>
+      <p class="dica" id="lugares-de"></p>
+      <ul class="lista" id="lista-perto"></ul>
+      <h2>Meus lugares</h2>
+      <ul class="lista" id="lista-meus"></ul>
+      <p class="dica" id="meus-vazio">Toque em qualquer ponto do mapa e escolha “Salvar este lugar”.</p>
+      <div class="aviso">
+        <h3>Fortaleza do End (stronghold)</h3>
+        <p class="dica">No Bedrock, a posição dela não dá pra calcular só pela seed com segurança, então o app não mostra pra não te mandar pro lugar errado. Use olhos do Ender: jogue um, ande na direção que ele voa e repita. Quando achar, salve aqui em Meus lugares.</p>
+      </div>
+      <div class="aviso">
+        <h3>Quanto dá pra confiar</h3>
+        <p class="dica">As posições seguem a regra do Bedrock. Num mundo testado dentro do jogo, as vilas bateram certinho. Em outros testes, templos, iglus, cabanas e câmaras de desafio também. No Nether, cada ponto é uma fortaleza ou um bastião: o app não sabe qual dos dois.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="tela" id="tela-gps" aria-labelledby="h-gps" hidden>
+    <div class="wrap secao">
+      <h2 id="h-gps">GPS</h2>
+      <div id="gps-destino"></div>
+      <div class="campo">
+        <span class="rotulo">Onde você está agora (veja em “Mostrar coordenadas”)</span>
+        <div class="posicao">
+          <label class="eixo" for="pos-x">X</label>
+          <div class="cell"><input class="txt" id="pos-x" inputmode="numeric" autocomplete="off"><button type="button" class="pm" data-alvo="pos-x" aria-label="Trocar o sinal do X">±</button></div>
+          <label class="eixo" for="pos-z">Z</label>
+          <div class="cell"><input class="txt" id="pos-z" inputmode="numeric" autocomplete="off"><button type="button" class="pm" data-alvo="pos-z" aria-label="Trocar o sinal do Z">±</button></div>
+        </div>
+        <p class="dica">Dá pra colar a linha inteira, tipo “Posição: 120, 64, -340”.</p>
+      </div>
+      <div id="gps-rumo"></div>
+    </div>
+  </section>
+
+  <nav class="abas" aria-label="Telas">
+    <button type="button" class="aba" data-aba="mapa" aria-current="page"><span data-ico="mapa"></span>Mapa</button>
+    <button type="button" class="aba" data-aba="lugares" aria-current="false"><span data-ico="lista"></span>Lugares</button>
+    <button type="button" class="aba" data-aba="gps" aria-current="false"><span data-ico="seta"></span>GPS</button>
+  </nav>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<dialog class="sheet" id="dlg-ponto" aria-labelledby="p-titulo">
+  <div class="sheet-in">
+    <div class="sheet-head">
+      <span class="tile" id="p-tile"></span>
+      <h2 id="p-titulo"></h2>
+      <button type="button" class="btn-x" data-fechar aria-label="Fechar"><span data-ico="fechar"></span></button>
+    </div>
+    <div class="info" id="p-info"></div>
+    <p class="dica" id="p-dica"></p>
+    <div class="campo" id="p-salvar-campo" hidden>
+      <label for="p-nome">Nome do lugar</label>
+      <input class="txt" id="p-nome" maxlength="30" autocomplete="off" placeholder="Ex.: Minha base">
+    </div>
+    <div class="grade2">
+      <button type="button" class="btn btn-primary span-2" id="p-ir">Ir até lá</button>
+      <button type="button" class="btn" id="p-copiar">Copiar coords</button>
+      <button type="button" class="btn" id="p-salvar">Salvar este lugar</button>
+      <button type="button" class="btn span-2" id="p-apagar" hidden>Apagar dos meus lugares</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="sheet" id="dlg-ajustes" aria-labelledby="a-titulo">
+  <div class="sheet-in">
+    <div class="sheet-head">
+      <h2 id="a-titulo">Ajustes</h2>
+      <button type="button" class="btn-x" data-fechar aria-label="Fechar"><span data-ico="fechar"></span></button>
+    </div>
+    <div class="campo">
+      <span class="rotulo">Seed deste mapa</span>
+      <p class="num" id="a-seed">••••••••</p>
+      <div class="grade2">
+        <button type="button" class="btn" id="a-mostrar">Mostrar seed</button>
+        <button type="button" class="btn" id="a-trocar">Trocar seed</button>
+      </div>
+      <p class="dica">A seed fica só neste celular.</p>
+    </div>
+    <p class="dica">Biomas: cubiomes (MIT). Regra das estruturas do Bedrock: a mesma publicada pelos projetos abertos SeedFinder e MCBE-seedcracker, conferida com mundos de verdade.</p>
+  </div>
+</dialog>
+
+<script src="biomas.js"></script>
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+function ler(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } }
+function gravar(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sem armazenamento */ } }
+const CHAVE = { seed: 'bussola.seed', pos: 'bussola.posicao', alvo: 'bussola.alvo', tipos: 'bussola.tipos', vista: 'bussola.vista', meus: 'bussola.meus', aba: 'bussola.aba' };
+
+// ---------- Ícones em pixel (10x10) ----------
+const ICONES = {
+  bussola: ['...####...', '.##....##.', '.#...#..#.', '#...##...#', '#..###...#', '#...###..#', '#...##...#', '.#..#...#.', '.##....##.', '...####...'],
+  voce: ['...####...', '.########.', '.###..###.', '###....###', '###....###', '.###..###.', '.########.', '..######..', '...####...', '....##....'],
+  alvo: ['##........', '########..', '#########.', '########..', '#######...', '##........', '##........', '##........', '##........', '##........'],
+  mapa: ['##..##..##', '###.###.##', '#.##.##.##', '#..#..#..#', '#..#..#..#', '#..#..#..#', '#..#..#..#', '##.##.##.#', '##..###.##', '##..##..##'],
+  lista: ['..........', '##.######.', '##.######.', '..........', '##.######.', '##.######.', '..........', '##.######.', '##.######.', '..........'],
+  seta: ['....##....', '...####...', '..######..', '.########.', '##########', '....##....', '....##....', '....##....', '....##....', '....##....'],
+  ajustes: ['....##....', '.#.####.#.', '.########.', '..##..##..', '###....###', '###....###', '..##..##..', '.########.', '.#.####.#.', '....##....'],
+  fechar: ['..........', '.##....##.', '.###..###.', '..######..', '...####...', '...####...', '..######..', '.###..###.', '.##....##.', '..........'],
+  mais: ['..........', '....##....', '....##....', '....##....', '.########.', '.########.', '....##....', '....##....', '....##....', '..........'],
+  menos: ['..........', '..........', '..........', '..........', '.########.', '.########.', '..........', '..........', '..........', '..........'],
+  vila: ['....##....', '...####...', '..######..', '.########.', '##########', '.########.', '.###..###.', '.###..###.', '.###..###.', '.###..###.'],
+  cidade: ['.########.', '##########', '##..##..##', '##..##..##', '##########', '###.##.###', '.########.', '..#.##.#..', '..######..', '..........'],
+  camara: ['..####....', '.##..##...', '.##..##...', '..####....', '...##.....', '...##.....', '...####...', '...##.....', '...###....', '..........'],
+  mansao: ['....##....', '..######..', '##########', '#.#.##.#.#', '##########', '#.#.##.#.#', '##########', '##..##..##', '##..##..##', '##########'],
+  monumento: ['....##....', '...####...', '..######..', '..#.##.#..', '.########.', '.#.####.#.', '##########', '#.##..##.#', '##########', '..........'],
+  posto: ['.########.', '.#.####.#.', '.########.', '..######..', '..#....#..', '..######..', '..#....#..', '..######..', '..#....#..', '.########.'],
+  templo: ['....##....', '...####...', '...####...', '..######..', '..##..##..', '.########.', '.###..###.', '##########', '##########', '..........'],
+  navio: ['....#.....', '....##....', '....###...', '....####..', '....#.....', '#########.', '.#######..', '..#####...', '..........', '..........'],
+  portal: ['.########.', '.#++++++#.', '.#++++++#.', '.#++++++#.', '.#++++++#.', '.#++++++#.', '.#++++++#.', '.#++++++#.', '.#++++++#.', '.########.'],
+  bau: ['..........', '.########.', '.#++++++#.', '.#++++++#.', '.###..###.', '.###..###.', '.#++++++#.', '.#++++++#.', '.########.', '..........'],
+  castelo: ['#.#.##.#.#', '##########', '.########.', '.########.', '.###..###.', '.###..###.', '.##....##.', '.##....##.', '.##....##.', '.##....##.'],
+};
+function caminhos(nome) {
+  let cheio = '', meio = '';
+  ICONES[nome].forEach((linha, y) => linha.replace(/#+|\++/g, (m, x) => {
+    const d = `M${x} ${y}h${m.length}v1h-${m.length}z`;
+    if (m[0] === '#') cheio += d; else meio += d;
+    return m;
+  }));
+  return { cheio, meio };
+}
+function svg(nome) {
+  const { cheio, meio } = caminhos(nome);
+  return `<svg class="ico" viewBox="0 0 10 10" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="currentColor" d="${cheio}"/>${meio ? `<path fill="currentColor" opacity=".4" d="${meio}"/>` : ''}</svg>`;
+}
+const PATH2D = {};
+function path2d(nome) {
+  if (!PATH2D[nome]) { const c = caminhos(nome); PATH2D[nome] = { cheio: new Path2D(c.cheio), meio: c.meio ? new Path2D(c.meio) : null }; }
+  return PATH2D[nome];
+}
+
+// ---------- Tipos de estrutura (códigos do gerador) ----------
+const TIPOS = {
+  1: { nome: 'Vila', cor: '#74C94F', ico: 'vila', dim: 'o', liga: true },
+  2: { nome: 'Cidade ancestral', cor: '#3FD0D4', ico: 'cidade', dim: 'o', liga: true },
+  3: { nome: 'Câmara de desafios', cor: '#E08A3C', ico: 'camara', dim: 'o', liga: true },
+  4: { nome: 'Mansão', cor: '#C08A55', ico: 'mansao', dim: 'o', liga: true },
+  5: { nome: 'Monumento', cor: '#4FA3E8', ico: 'monumento', dim: 'o', liga: true },
+  6: { nome: 'Posto de saqueadores', cor: '#B8BEC8', ico: 'posto', dim: 'o', liga: true },
+  7: { nome: 'Templo', cor: '#F2C94C', ico: 'templo', dim: 'o', liga: true, sub: { 1: 'Templo do deserto', 2: 'Templo da selva', 3: 'Cabana da bruxa', 4: 'Iglu' } },
+  8: { nome: 'Navio naufragado', cor: '#C9A66B', ico: 'navio', dim: 'o', liga: false, muitos: true },
+  9: { nome: 'Portal arruinado', cor: '#B57BFF', ico: 'portal', dim: 'o', liga: false, muitos: true },
+  10: { nome: 'Tesouro enterrado', cor: '#FFD23F', ico: 'bau', dim: 'o', liga: false, muitos: true },
+  11: { nome: 'Fortaleza ou bastião', cor: '#FF6B57', ico: 'castelo', dim: 'n', liga: true },
+  12: { nome: 'Portal arruinado', cor: '#B57BFF', ico: 'portal', dim: 'n', liga: false, muitos: true },
+};
+const nomeDe = e => (TIPOS[e.tipo].sub && TIPOS[e.tipo].sub[e.sub]) || TIPOS[e.tipo].nome;
+const BIOMA_PT = {
+  ocean: 'Oceano', deep_ocean: 'Oceano profundo', warm_ocean: 'Oceano quente', lukewarm_ocean: 'Oceano morno', cold_ocean: 'Oceano frio', frozen_ocean: 'Oceano congelado',
+  deep_lukewarm_ocean: 'Oceano morno profundo', deep_cold_ocean: 'Oceano frio profundo', deep_frozen_ocean: 'Oceano congelado profundo',
+  plains: 'Planície', sunflower_plains: 'Planície de girassóis', desert: 'Deserto', forest: 'Floresta', flower_forest: 'Floresta florida', birch_forest: 'Floresta de bétulas',
+  dark_forest: 'Floresta escura', taiga: 'Taiga', snowy_taiga: 'Taiga nevada', snowy_plains: 'Planície nevada', jungle: 'Selva', bamboo_jungle: 'Selva de bambu',
+  sparse_jungle: 'Selva esparsa', savanna: 'Savana', swamp: 'Pântano', mangrove_swamp: 'Manguezal', beach: 'Praia', snowy_beach: 'Praia nevada', stony_shore: 'Costa rochosa',
+  river: 'Rio', frozen_river: 'Rio congelado', mushroom_fields: 'Campos de cogumelos', meadow: 'Prado', cherry_grove: 'Bosque de cerejeiras', grove: 'Bosque nevado',
+  badlands: 'Terras áridas', windswept_hills: 'Colinas ventosas', jagged_peaks: 'Picos irregulares', frozen_peaks: 'Picos congelados', stony_peaks: 'Picos rochosos',
+  snowy_slopes: 'Encostas nevadas', pale_garden: 'Jardim pálido', old_growth_pine_taiga: 'Taiga de pinheiros antigos', old_growth_spruce_taiga: 'Taiga de abetos antigos',
+};
+const nomeBioma = b => BIOMA_PT[b] || (b ? b.replace(/_/g, ' ') : '');
+
+// ---------- Avisos ----------
+let toastTimer = 0;
+function toast(t) { const el = $('#toast'); el.textContent = t; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.hidden = true; }, 2600); }
+async function copiarTexto(t) {
+  try { await navigator.clipboard.writeText(t); return true; } catch { /* jeito antigo */ }
+  try { const a = document.createElement('textarea'); a.value = t; a.style.cssText = 'position:fixed;opacity:0'; (document.querySelector('dialog[open]') || document.body).append(a); a.select(); const ok = document.execCommand('copy'); a.remove(); return ok; } catch { return false; }
+}
+
+// ---------- Gerador (Web Worker) ----------
+const trabalhador = new Worker('gerador.js');
+let pedidoId = 0;
+const esperando = new Map();
+trabalhador.onmessage = e => { const f = esperando.get(e.data.id); if (f) { esperando.delete(e.data.id); f(e.data); } };
+const pedir = msg => new Promise(ok => { const id = ++pedidoId; esperando.set(id, ok); trabalhador.postMessage({ ...msg, id }); });
+
+// ---------- Estado ----------
+let seed = ler(CHAVE.seed);
+let pos = ler(CHAVE.pos) || { x: 0, z: 0 };
+let alvo = ler(CHAVE.alvo);
+let meus = ler(CHAVE.meus) || [];
+let ligados = ler(CHAVE.tipos) || Object.keys(TIPOS).filter(k => TIPOS[k].liga).map(Number);
+let dim = 'o';
+const vista = Object.assign({ x: 0, z: 0, bpp: 4 }, ler(CHAVE.vista) || {});
+const salvarVista = () => gravar(CHAVE.vista, { x: Math.round(vista.x), z: Math.round(vista.z), bpp: vista.bpp });
+
+// Bússola do Minecraft: Norte = -Z, Leste = +X.
+const RUMOS = ['Norte', 'Nordeste', 'Leste', 'Sudeste', 'Sul', 'Sudoeste', 'Oeste', 'Noroeste'];
+const angulo = (dx, dz) => Math.atan2(dx, -dz); // 0 = norte, sentido horário
+const rumo = (dx, dz) => RUMOS[((Math.round(angulo(dx, dz) / (Math.PI / 4)) % 8) + 8) % 8];
+const distancia = (a, b) => Math.round(Math.hypot(a.x - b.x, a.z - b.z));
+const posNaDim = d => (d === 'n' ? { x: Math.floor(pos.x / 8), z: Math.floor(pos.z / 8) } : { x: pos.x, z: pos.z });
+
+// ---------- Primeira vez ----------
+async function iniciar() {
+  $('#tela-seed').hidden = !!seed;
+  $('#app').hidden = !seed;
+  if (!seed) { $('#seed').focus(); return; }
+  await pedir({ tipo: 'seed', seed });
+  tiles.clear();
+  estrutCache = { chave: '', lista: [] };
+  montarFiltros();
+  irPara(ler(CHAVE.aba) || 'mapa');
+  redimensionar();
+  atualizarMapa();
+}
+$('#form-seed').addEventListener('submit', e => {
+  e.preventDefault();
+  const v = $('#seed').value.trim().replace(/[−–]/g, '-');
+  const ok = /^-?\d{1,20}$/.test(v);
+  $('#seed-erro').hidden = ok;
+  if (!ok) return;
+  seed = BigInt.asIntN(64, BigInt(v)).toString();
+  gravar(CHAVE.seed, seed);
+  iniciar();
+});
+
+// ---------- Abas e dimensão ----------
+function irPara(aba) {
+  for (const nome of ['mapa', 'lugares', 'gps']) $(`#tela-${nome}`).hidden = nome !== aba;
+  $$('.aba').forEach(b => b.setAttribute('aria-current', b.dataset.aba === aba ? 'page' : 'false'));
+  gravar(CHAVE.aba, aba);
+  if (aba === 'mapa') { redimensionar(); atualizarMapa(); }
+  if (aba === 'lugares') renderLugares();
+  if (aba === 'gps') renderGps();
+}
+$$('.aba').forEach(b => b.addEventListener('click', () => irPara(b.dataset.aba)));
+$$('.dims button').forEach(b => b.addEventListener('click', () => {
+  if (dim === b.dataset.dim) return;
+  // Troca de dimensão mantendo o mesmo lugar do mundo (÷8 / ×8).
+  const f = b.dataset.dim === 'n' ? 1 / 8 : 8;
+  vista.x *= f; vista.z *= f; vista.bpp = Math.min(64, Math.max(0.5, vista.bpp * f));
+  dim = b.dataset.dim;
+  $$('.dims button').forEach(o => o.setAttribute('aria-pressed', String(o === b)));
+  montarFiltros();
+  atualizarMapa();
+  if (!$('#tela-lugares').hidden) renderLugares();
+}));
+
+function montarFiltros() {
+  $('#filtros').innerHTML = Object.entries(TIPOS).filter(([, t]) => t.dim === dim).map(([k, t]) =>
+    `<button type="button" class="chip" data-tipo="${k}" aria-pressed="${ligados.includes(Number(k))}" style="--cor:${t.cor}">${svg(t.ico)}${esc(k === '7' ? 'Templos' : t.nome)}</button>`).join('');
+}
+$('#filtros').addEventListener('click', e => {
+  const b = e.target.closest('[data-tipo]');
+  if (!b) return;
+  const t = Number(b.dataset.tipo);
+  ligados = ligados.includes(t) ? ligados.filter(x => x !== t) : [...ligados, t];
+  gravar(CHAVE.tipos, ligados);
+  b.setAttribute('aria-pressed', String(ligados.includes(t)));
+  estrutCache.chave = '';
+  atualizarMapa();
+});
+
+// ---------- Mapa ----------
+const canvas = $('#mapa'), ctx = canvas.getContext('2d');
+const TAM_TILE = 128;
+const tiles = new Map();
+let pendentes = 0;
+const filaTiles = [];
+let estrutCache = { chave: '', lista: [] };
+let estrutPedido = 0;
+let dpr = 1, largura = 0, altura = 0;
+
+function redimensionar() {
+  const r = canvas.getBoundingClientRect();
+  if (!r.width) return;
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  largura = r.width; altura = r.height;
+  canvas.width = Math.round(largura * dpr); canvas.height = Math.round(altura * dpr);
+  desenhar();
+}
+window.addEventListener('resize', () => { redimensionar(); atualizarMapa(); });
+
+const escalaBiomas = () => (vista.bpp <= 2 ? 4 : vista.bpp <= 8 ? 16 : 64);
+const limites = () => ({ x0: vista.x - (largura / 2) * vista.bpp, z0: vista.z - (altura / 2) * vista.bpp, x1: vista.x + (largura / 2) * vista.bpp, z1: vista.z + (altura / 2) * vista.bpp });
+const naTela = (x, z) => ({ sx: (x - vista.x) / vista.bpp + largura / 2, sz: (z - vista.z) / vista.bpp + altura / 2 });
+
+function pedirTiles() {
+  if (dim !== 'o') return;
+  const esc = escalaBiomas(), bloco = TAM_TILE * esc, l = limites();
+  for (let tz = Math.floor(l.z0 / bloco); tz <= Math.floor(l.z1 / bloco); tz++) {
+    for (let tx = Math.floor(l.x0 / bloco); tx <= Math.floor(l.x1 / bloco); tx++) {
+      const k = `${esc}:${tx}:${tz}`;
+      if (!tiles.has(k)) { tiles.set(k, null); filaTiles.push({ k, esc, tx, tz }); }
+    }
+  }
+  processarFila();
+}
+function processarFila() {
+  $('#carregando').hidden = !(filaTiles.length || pendentes);
+  while (pendentes < 3 && filaTiles.length) {
+    const t = filaTiles.shift();
+    pendentes++;
+    pedir({ tipo: 'tile', escala: t.esc, tx: t.tx, tz: t.tz }).then(r => {
+      pendentes--;
+      if (r.ok) {
+        const c = document.createElement('canvas');
+        c.width = c.height = TAM_TILE;
+        c.getContext('2d').putImageData(new ImageData(r.rgba, TAM_TILE, TAM_TILE), 0, 0);
+        tiles.set(t.k, c);
+        desenhar();
+      }
+      processarFila();
+    });
+  }
+  if (tiles.size > 400) { for (const k of [...tiles.keys()].slice(0, 100)) if (tiles.get(k)) tiles.delete(k); }
+}
+
+async function pedirEstruturas() {
+  const l = limites();
+  const tipos = ligados.filter(t => TIPOS[t] && TIPOS[t].dim === dim && !(TIPOS[t].muitos && vista.bpp > 8));
+  // Pede um pouco além da tela, em blocos de 512, pra não pedir de novo a cada arrasto.
+  const m = 512, x0 = Math.floor((l.x0 - (l.x1 - l.x0) / 2) / m) * m, z0 = Math.floor((l.z0 - (l.z1 - l.z0) / 2) / m) * m;
+  const x1 = Math.ceil((l.x1 + (l.x1 - l.x0) / 2) / m) * m, z1 = Math.ceil((l.z1 + (l.z1 - l.z0) / 2) / m) * m;
+  const chave = `${dim}|${tipos.join(',')}|${x0}|${z0}|${x1}|${z1}`;
+  if (estrutCache.chave === chave) return;
+  const meu = ++estrutPedido;
+  const r = await pedir({ tipo: 'estruturas', tipos, x0, z0, x1, z1, max: 3000 });
+  if (meu !== estrutPedido || !r.ok) return;
+  estrutCache = { chave, lista: r.lista };
+  desenhar();
+}
+
+let agendado = 0;
+function atualizarMapa() {
+  if (!seed || $('#tela-mapa').hidden) return;
+  desenhar();
+  pedirTiles();
+  clearTimeout(agendado);
+  agendado = setTimeout(() => { pedirEstruturas(); salvarVista(); }, 120);
+}
+
+function marcador(sx, sz, cor, ico, destaque) {
+  const t = 24;
+  ctx.fillStyle = destaque ? '#FFB938' : 'rgba(16,21,31,0.9)';
+  ctx.fillRect(sx - t / 2 - 2, sz - t / 2 - 2, t + 4, t + 4);
+  ctx.fillStyle = cor;
+  ctx.fillRect(sx - t / 2, sz - t / 2, t, t);
+  ctx.save();
+  ctx.translate(sx - 10, sz - 10);
+  ctx.scale(2, 2);
+  ctx.fillStyle = '#10151F';
+  const p = path2d(ico);
+  ctx.fill(p.cheio);
+  if (p.meio) { ctx.globalAlpha = 0.4; ctx.fill(p.meio); }
+  ctx.restore();
+}
+
+function desenhar() {
+  if (!largura) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = dim === 'n' ? '#2A1210' : '#10151F';
+  ctx.fillRect(0, 0, largura, altura);
+  const l = limites();
+  if (dim === 'o') {
+    const esc = escalaBiomas(), bloco = TAM_TILE * esc;
+    for (let tz = Math.floor(l.z0 / bloco); tz <= Math.floor(l.z1 / bloco); tz++) {
+      for (let tx = Math.floor(l.x0 / bloco); tx <= Math.floor(l.x1 / bloco); tx++) {
+        const c = tiles.get(`${esc}:${tx}:${tz}`);
+        if (!c) continue;
+        const { sx, sz } = naTela(tx * bloco, tz * bloco);
+        const lado = bloco / vista.bpp;
+        ctx.drawImage(c, Math.floor(sx), Math.floor(sz), Math.ceil(lado) + 1, Math.ceil(lado) + 1);
+      }
+    }
+  } else {
+    // Nether: sem biomas (o gerador do Bedrock é diferente lá), só uma grade de 128 blocos.
+    ctx.strokeStyle = 'rgba(255,107,87,0.12)';
+    ctx.lineWidth = 1;
+    const passo = 128;
+    for (let x = Math.floor(l.x0 / passo) * passo; x <= l.x1; x += passo) { const { sx } = naTela(x, 0); ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx, altura); ctx.stroke(); }
+    for (let z = Math.floor(l.z0 / passo) * passo; z <= l.z1; z += passo) { const { sz } = naTela(0, z); ctx.beginPath(); ctx.moveTo(0, sz); ctx.lineTo(largura, sz); ctx.stroke(); }
+  }
+  // eixos X=0 e Z=0
+  ctx.strokeStyle = 'rgba(238,242,248,0.25)';
+  const o = naTela(0, 0);
+  ctx.beginPath(); ctx.moveTo(o.sx, 0); ctx.lineTo(o.sx, altura); ctx.moveTo(0, o.sz); ctx.lineTo(largura, o.sz); ctx.stroke();
+
+  const eu = posNaDim(dim);
+  const meuPonto = naTela(eu.x, eu.z);
+  if (alvo && alvo.dim === dim) {
+    const a = naTela(alvo.x, alvo.z);
+    ctx.strokeStyle = '#FFB938'; ctx.lineWidth = 3; ctx.setLineDash([8, 6]);
+    ctx.beginPath(); ctx.moveTo(meuPonto.sx, meuPonto.sz); ctx.lineTo(a.sx, a.sz); ctx.stroke(); ctx.setLineDash([]);
+  }
+  const visiveis = estrutCache.lista.filter(e => e.x >= l.x0 - 40 && e.x <= l.x1 + 40 && e.z >= l.z0 - 40 && e.z <= l.z1 + 40);
+  if (visiveis.length <= 800) for (const e of visiveis) { const p = naTela(e.x, e.z); marcador(p.sx, p.sz, TIPOS[e.tipo].cor, TIPOS[e.tipo].ico, alvo && alvo.x === e.x && alvo.z === e.z && alvo.dim === dim); }
+  for (const m of meus.filter(m => m.dim === dim)) { const p = naTela(m.x, m.z); marcador(p.sx, p.sz, '#EEF2F8', 'alvo', alvo && alvo.x === m.x && alvo.z === m.z); }
+  if (alvo && alvo.dim === dim && !estrutCache.lista.some(e => e.x === alvo.x && e.z === alvo.z) && !meus.some(m => m.x === alvo.x && m.z === alvo.z && m.dim === dim)) {
+    const a = naTela(alvo.x, alvo.z); marcador(a.sx, a.sz, '#FFB938', 'alvo', true);
+  }
+  marcador(meuPonto.sx, meuPonto.sz, '#FFB938', 'voce', false);
+  // régua de escala
+  const opcoes = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
+  const blocos = opcoes.find(v => v / vista.bpp >= 60) || 10000;
+  $('#escala').textContent = `${blocos >= 1000 ? `${blocos / 1000} km` : `${blocos} blocos`} = ${Math.round(blocos / vista.bpp)} px`;
+}
+
+// Arrastar, pinça e toque
+const toques = new Map();
+let gesto = null;
+canvas.addEventListener('pointerdown', e => {
+  canvas.setPointerCapture(e.pointerId);
+  toques.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (toques.size === 1) gesto = { tipo: 'arrastar', x: e.clientX, y: e.clientY, vx: vista.x, vz: vista.z, t: Date.now(), moveu: false };
+  if (toques.size === 2) {
+    const [a, b] = [...toques.values()];
+    gesto = { tipo: 'pinca', d: Math.hypot(a.x - b.x, a.y - b.y), bpp: vista.bpp, moveu: true };
+  }
+});
+canvas.addEventListener('pointermove', e => {
+  if (!toques.has(e.pointerId) || !gesto) return;
+  toques.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (gesto.tipo === 'arrastar' && toques.size === 1) {
+    const dx = e.clientX - gesto.x, dy = e.clientY - gesto.y;
+    if (Math.abs(dx) + Math.abs(dy) > 6) gesto.moveu = true;
+    vista.x = gesto.vx - dx * vista.bpp; vista.z = gesto.vz - dy * vista.bpp;
+    atualizarMapa();
+  } else if (gesto.tipo === 'pinca' && toques.size === 2) {
+    const [a, b] = [...toques.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y);
+    if (d > 10) { vista.bpp = Math.min(64, Math.max(0.5, gesto.bpp * gesto.d / d)); atualizarMapa(); }
+  }
+});
+function soltar(e) {
+  if (!toques.has(e.pointerId)) return;
+  toques.delete(e.pointerId);
+  if (gesto && gesto.tipo === 'arrastar' && !gesto.moveu && Date.now() - gesto.t < 500) {
+    const r = canvas.getBoundingClientRect();
+    tocar(e.clientX - r.left, e.clientY - r.top);
+  }
+  if (toques.size === 1) { const [p] = [...toques.values()]; gesto = { tipo: 'arrastar', x: p.x, y: p.y, vx: vista.x, vz: vista.z, t: 0, moveu: true }; }
+  if (!toques.size) gesto = null;
+}
+canvas.addEventListener('pointerup', soltar);
+canvas.addEventListener('pointercancel', soltar);
+canvas.addEventListener('wheel', e => { e.preventDefault(); zoom(e.deltaY > 0 ? 1.25 : 0.8); }, { passive: false });
+function zoom(f) { vista.bpp = Math.min(64, Math.max(0.5, vista.bpp * f)); atualizarMapa(); }
+$('#zoom-mais').addEventListener('click', () => zoom(0.5));
+$('#zoom-menos').addEventListener('click', () => zoom(2));
+$('#ir-mim').addEventListener('click', () => { const eu = posNaDim(dim); vista.x = eu.x; vista.z = eu.z; atualizarMapa(); });
+
+// ---------- Detalhe de um ponto ----------
+const dlgPonto = $('#dlg-ponto');
+let pontoAberto = null;
+async function tocar(sx, sz) {
+  let perto = null, melhor = 22;
+  const candidatos = [
+    ...estrutCache.lista.map(e => ({ ...e, nome: nomeDe(e), cor: TIPOS[e.tipo].cor, ico: TIPOS[e.tipo].ico, dim })),
+    ...meus.filter(m => m.dim === dim).map(m => ({ ...m, cor: '#EEF2F8', ico: 'alvo', meu: true })),
+  ];
+  for (const c of candidatos) { const p = naTela(c.x, c.z); const d = Math.hypot(p.sx - sx, p.sz - sz); if (d < melhor) { melhor = d; perto = c; } }
+  if (!perto) {
+    const x = Math.round(vista.x + (sx - largura / 2) * vista.bpp), z = Math.round(vista.z + (sz - altura / 2) * vista.bpp);
+    perto = { x, z, dim, nome: 'Ponto no mapa', cor: '#A3AFC4', ico: 'alvo', livre: true };
+  }
+  abrirPonto(perto);
+}
+async function abrirPonto(p) {
+  pontoAberto = p;
+  const t = $('#p-tile');
+  t.style.setProperty('--cor', p.cor);
+  t.innerHTML = svg(p.ico);
+  $('#p-titulo').textContent = p.nome;
+  const eu = posNaDim(p.dim);
+  const d = distancia(eu, p);
+  const outra = p.dim === 'o' ? { x: Math.floor(p.x / 8), z: Math.floor(p.z / 8), nome: 'No Nether' } : { x: p.x * 8, z: p.z * 8, nome: 'No mundo normal' };
+  $('#p-info').innerHTML = `<div><span class="rotulo">X</span><span class="num">${p.x}</span></div><div><span class="rotulo">Z</span><span class="num">${p.z}</span></div>
+<div><span class="rotulo">Distância</span><span class="num">${d}</span></div><div><span class="rotulo">Direção</span><span class="num">${d ? rumo(p.x - eu.x, p.z - eu.z) : '—'}</span></div>
+<div class="span-2"><span class="rotulo">${outra.nome}</span><span class="num">X ${outra.x} · Z ${outra.z}</span></div>`;
+  $('#p-dica').textContent = '';
+  if (p.dim === 'o') pedir({ tipo: 'bioma', x: p.x, z: p.z }).then(r => { if (pontoAberto === p && r.ok && r.bioma) $('#p-dica').textContent = `Bioma: ${nomeBioma(r.bioma)}`; });
+  if (p.tipo === 11) $('#p-dica').textContent = 'Pode ser uma fortaleza do Nether ou um bastião.';
+  $('#p-salvar-campo').hidden = true;
+  $('#p-salvar').hidden = !!p.meu;
+  $('#p-apagar').hidden = !p.meu;
+  $('#p-nome').value = p.livre ? '' : p.nome;
+  if (!dlgPonto.open) dlgPonto.showModal();
+}
+$('#p-ir').addEventListener('click', () => {
+  const p = pontoAberto;
+  alvo = { x: p.x, z: p.z, dim: p.dim, nome: p.nome, cor: p.cor, ico: p.ico };
+  gravar(CHAVE.alvo, alvo);
+  dlgPonto.close();
+  irPara('gps');
+});
+$('#p-copiar').addEventListener('click', async e => { const b = e.currentTarget; b.textContent = (await copiarTexto(`${pontoAberto.x} ~ ${pontoAberto.z}`)) ? 'Copiado!' : 'Não deu'; setTimeout(() => { b.textContent = 'Copiar coords'; }, 1500); });
+$('#p-salvar').addEventListener('click', () => {
+  const campo = $('#p-salvar-campo');
+  if (campo.hidden) { campo.hidden = false; $('#p-nome').focus(); return; }
+  const nome = $('#p-nome').value.trim() || 'Meu lugar';
+  const p = pontoAberto;
+  meus.push({ id: Date.now().toString(36), nome, x: p.x, z: p.z, dim: p.dim });
+  gravar(CHAVE.meus, meus);
+  dlgPonto.close();
+  toast(`“${nome}” salvo`);
+  desenhar();
+});
+$('#p-apagar').addEventListener('click', () => {
+  meus = meus.filter(m => m.id !== pontoAberto.id);
+  gravar(CHAVE.meus, meus);
+  dlgPonto.close();
+  desenhar();
+  if (!$('#tela-lugares').hidden) renderLugares();
+});
+
+// ---------- Lugares perto ----------
+async function renderLugares() {
+  const eu = posNaDim(dim);
+  const raio = dim === 'n' ? 600 : 2500;
+  $('#lugares-de').textContent = `A partir de X ${eu.x} · Z ${eu.z} ${dim === 'n' ? 'no Nether' : ''}. Mude sua posição na aba GPS.`;
+  const tipos = ligados.filter(t => TIPOS[t] && TIPOS[t].dim === dim);
+  $('#lista-perto').innerHTML = '<li class="dica">Procurando…</li>';
+  const r = await pedir({ tipo: 'estruturas', tipos, x0: eu.x - raio, z0: eu.z - raio, x1: eu.x + raio, z1: eu.z + raio, max: 2000 });
+  const lista = (r.ok ? r.lista : []).map(e => ({ ...e, d: distancia(eu, e) })).sort((a, b) => a.d - b.d).slice(0, 40);
+  $('#lista-perto').innerHTML = lista.length ? lista.map((e, i) => itemHTML({ ...e, nome: nomeDe(e), cor: TIPOS[e.tipo].cor, ico: TIPOS[e.tipo].ico, dim }, eu, `e${i}`)).join('')
+    : '<li class="dica">Nada perto com os filtros ligados. Ligue mais tipos no mapa.</li>';
+  lugaresAtuais = lista.map(e => ({ ...e, nome: nomeDe(e), cor: TIPOS[e.tipo].cor, ico: TIPOS[e.tipo].ico, dim }));
+  const meusAqui = meus.filter(m => m.dim === dim);
+  $('#lista-meus').innerHTML = meusAqui.map(m => itemHTML({ ...m, cor: '#EEF2F8', ico: 'alvo', meu: true }, eu, `m${m.id}`)).join('');
+  $('#meus-vazio').hidden = meusAqui.length > 0;
+}
+let lugaresAtuais = [];
+function itemHTML(p, eu, chave) {
+  const d = distancia(eu, p);
+  return `<li><button type="button" class="item" data-ponto="${esc(chave)}"><span class="tile" style="--cor:${p.cor}">${svg(p.ico)}</span>
+<span class="item-corpo"><span class="item-nome">${esc(p.nome)}</span><span class="item-meta">X ${p.x} · Z ${p.z}</span></span>
+<span class="dist"><span class="num">${d}</span><span class="dir">${d ? rumo(p.x - eu.x, p.z - eu.z) : 'aqui'}</span></span></button></li>`;
+}
+$('#tela-lugares').addEventListener('click', e => {
+  const b = e.target.closest('[data-ponto]');
+  if (!b) return;
+  const k = b.dataset.ponto;
+  const p = k[0] === 'e' ? lugaresAtuais[Number(k.slice(1))] : (() => { const m = meus.find(x => x.id === k.slice(1)); return m && { ...m, cor: '#EEF2F8', ico: 'alvo', meu: true }; })();
+  if (p) abrirPonto(p);
+});
+
+// ---------- GPS ----------
+function numeros(txt) { return (String(txt).replace(/[−–]/g, '-').match(/-?\d+(?:\.\d+)?/g) || []).map(n => Math.floor(Number(n))); }
+const campoX = $('#pos-x'), campoZ = $('#pos-z');
+function lerPosicao() {
+  const nx = numeros(campoX.value), nz = numeros(campoZ.value);
+  if (nx.length >= 2) { const [x, a, b] = nx; campoX.value = x; campoZ.value = nx.length >= 3 ? b : a; return lerPosicao(); }
+  if (!nx.length || !nz.length) return;
+  pos = { x: nx[0], z: nz[0] };
+  gravar(CHAVE.pos, pos);
+  renderRumo();
+}
+[campoX, campoZ].forEach(c => {
+  c.addEventListener('input', lerPosicao);
+  c.addEventListener('focus', () => requestAnimationFrame(() => { try { c.select(); } catch { /* sem seleção */ } }));
+});
+document.addEventListener('pointerdown', e => { if (e.target.closest('.pm')) e.preventDefault(); });
+document.addEventListener('click', e => {
+  const b = e.target.closest('.pm');
+  if (!b) return;
+  const c = document.getElementById(b.dataset.alvo);
+  const n = numeros(c.value);
+  c.value = n.length ? String(-n[0]) : (c.value.trim() === '-' ? '' : '-');
+  c.dispatchEvent(new Event('input'));
+});
+function renderGps() {
+  campoX.value = pos.x; campoZ.value = pos.z;
+  if (!alvo) {
+    $('#gps-destino').innerHTML = '<div class="aviso"><h3>Escolha um destino</h3><p class="dica">Toque numa estrutura no mapa (ou em Lugares) e depois em “Ir até lá”.</p></div>';
+    $('#gps-rumo').innerHTML = '';
+    return;
+  }
+  $('#gps-destino').innerHTML = `<div class="destino"><span class="tile" style="--cor:${alvo.cor || '#FFB938'}">${svg(alvo.ico || 'alvo')}</span>
+<span class="item-corpo"><span class="rotulo">Indo para</span><span class="item-nome">${esc(alvo.nome)}</span><span class="item-meta">${alvo.dim === 'n' ? 'Nether · ' : ''}X ${alvo.x} · Z ${alvo.z}</span></span></div>`;
+  renderRumo();
+}
+function renderRumo() {
+  if (!alvo) return;
+  const eu = posNaDim(alvo.dim);
+  const dx = alvo.x - eu.x, dz = alvo.z - eu.z, d = Math.round(Math.hypot(dx, dz));
+  const graus = angulo(dx, dz) * 180 / Math.PI;
+  const passoX = dx === 0 ? 'Já está no X certo' : `${dx > 0 ? 'Leste' : 'Oeste'}: ${Math.abs(dx)} blocos`;
+  const passoZ = dz === 0 ? 'Já está no Z certo' : `${dz > 0 ? 'Sul' : 'Norte'}: ${Math.abs(dz)} blocos`;
+  const nether = alvo.dim === 'o' && d > 800
+    ? `<div class="aviso"><h3>Atalho pelo Nether</h3><p class="dica">No Nether cada bloco vale 8. Faça um portal onde você está, ande no Nether até <strong>X ${Math.floor(alvo.x / 8)} · Z ${Math.floor(alvo.z / 8)}</strong> (só ${Math.round(d / 8)} blocos) e faça outro portal lá.</p></div>` : '';
+  const emOutra = alvo.dim === 'n' ? '<p class="dica">O destino está no Nether. Digite sua posição do mundo normal: o app divide por 8 sozinho.</p>' : '';
+  $('#gps-rumo').innerHTML = d < 8
+    ? '<div class="aviso"><h3>Você chegou!</h3><p class="dica">Está a menos de 8 blocos do destino.</p></div>'
+    : `<div class="seta-caixa"><svg id="seta" viewBox="0 0 10 10" aria-hidden="true" style="transform:rotate(${graus}deg)"><path fill="currentColor" stroke="#C4861C" stroke-width="0.3" stroke-linejoin="round" d="M5 0.4 L9.2 5.2 L6.3 5.2 L6.3 9.6 L3.7 9.6 L3.7 5.2 L0.8 5.2 Z"/></svg>
+<p class="rumo">${rumo(dx, dz)}</p><p class="falta">${d} blocos</p></div>
+<div class="passos"><div class="passo"><span class="rotulo">X (Leste/Oeste)</span><span class="num">${eu.x} → ${alvo.x}</span><span class="dica">${passoX}</span></div>
+<div class="passo"><span class="rotulo">Z (Norte/Sul)</span><span class="num">${eu.z} → ${alvo.z}</span><span class="dica">${passoZ}</span></div></div>
+<p class="dica">A seta usa o mapa com o Norte pra cima. No jogo, o sol nasce no Leste e se põe no Oeste. Ande e atualize sua posição.</p>${emOutra}${nether}`;
+}
+
+// ---------- Ajustes ----------
+const dlgAjustes = $('#dlg-ajustes');
+$('#btn-ajustes').addEventListener('click', () => { $('#a-seed').textContent = '••••••••'; $('#a-mostrar').textContent = 'Mostrar seed'; dlgAjustes.showModal(); });
+$('#a-mostrar').addEventListener('click', e => { const ver = $('#a-seed').textContent.startsWith('•'); $('#a-seed').textContent = ver ? seed : '••••••••'; e.currentTarget.textContent = ver ? 'Esconder seed' : 'Mostrar seed'; });
+$('#a-trocar').addEventListener('click', () => { dlgAjustes.close(); seed = null; gravar(CHAVE.seed, null); $('#seed').value = ''; iniciar(); });
+document.addEventListener('click', e => { const b = e.target.closest('[data-fechar]'); if (b) b.closest('dialog').close(); });
+$$('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));
+
+// ---------- Início ----------
+$$('[data-ico]').forEach(el => { el.innerHTML = svg(el.dataset.ico); });
+iniciar();
+try { if ('serviceWorker' in navigator && window.isSecureContext) navigator.serviceWorker.register('../sw.js').catch(() => {}); } catch { /* sem service worker */ }
+})();
+</script>
+</body>
+</html>

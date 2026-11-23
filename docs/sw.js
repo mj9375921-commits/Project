@@ -1,6 +1,6 @@
 // Guarda o app no aparelho para ele abrir sem internet.
 // Mude o número da versão quando trocar a lista de arquivos.
-const CACHE = 'coords-v4';
+const CACHE = 'coords-v5';
 const ARQUIVOS = [
   './',
   './index.html',
@@ -22,6 +22,15 @@ const ARQUIVOS = [
   './embaixada/icons/icon-192.png',
   './embaixada/icons/icon-512.png',
   './embaixada/icons/apple-touch-icon.png',
+  './bussola/',
+  './bussola/manifest.webmanifest',
+  './bussola/gerador.js',
+  './bussola/gerador.wasm',
+  './bussola/biomas.js',
+  './bussola/icons/icon.svg',
+  './bussola/icons/icon-192.png',
+  './bussola/icons/icon-512.png',
+  './bussola/icons/apple-touch-icon.png',
 ];
 
 self.addEventListener('install', e => {

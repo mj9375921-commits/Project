@@ -14,5 +14,10 @@
 - `android-embaixada/` gera o APK da Embaixada (Capacitor abre o site do GitHub Pages). O workflow
   `.github/workflows/apk-embaixada.yml` monta e publica em Releases a cada push nessa pasta.
   Nunca coloque chave de assinatura no repositório: ele é público.
+- `docs/bussola/` é o app Bússola: mapa de estruturas do Bedrock a partir da seed, com GPS. A seed fica só no
+  celular do dono: nunca coloque a seed no repositório. O gerador é `bussola-gerador/bussola.c` (cubiomes MIT +
+  regra do Bedrock) e vira `docs/bussola/gerador.wasm` com `bussola-gerador/build.sh`. A seed 6666 é o gabarito
+  conferido no jogo: as vilas a até 1600 blocos de 0,0 são exatamente as 8 listadas no comentário de bussola.c.
+  O APK sai de `android-bussola/` pelo workflow `apk-bussola.yml`.
 - Se mudar a lista de arquivos em `docs/sw.js`, aumente o número em `CACHE`.
 - `src/` é um projeto Remotion (vídeo). Checagem: `npm run lint`.

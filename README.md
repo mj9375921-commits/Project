@@ -10,6 +10,8 @@ Status do server ResenhaCraft (quem está online): https://mj9375921-commits.git
 Embaixada (conversa e tratados entre os times): https://mj9375921-commits.github.io/Project/embaixada/
 APK da Embaixada para Android: página **Releases** do repositório (o GitHub monta sozinho a partir de `android-embaixada/`).
 
+Bússola (mapa de estruturas pela seed + GPS): https://mj9375921-commits.github.io/Project/bussola/ — APK em Releases (`android-bussola/`).
+
 **Ligar o GitHub Pages (uma vez só):**
 
 1. No repositório, abra **Settings → Pages**.
