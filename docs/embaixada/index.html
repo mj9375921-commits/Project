@@ -180,6 +180,22 @@ dialog.sheet::backdrop { background: var(--scrim); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+/* Cadeado e assinatura */
+.selos { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-8); }
+.selo { padding: 0 var(--sp-4); border: 2px solid currentColor; font: 700 var(--fs-12)/1.4 var(--font-text); letter-spacing: 0.04em; text-transform: uppercase; }
+.selo.verificado { color: var(--ow); }
+.selo.assinado { color: var(--text-dim); }
+.selo.suspeito { color: var(--danger); }
+.alerta { display: flex; flex-direction: column; gap: var(--sp-8); padding: var(--sp-8) var(--sp-16); border: 2px solid var(--danger); background: color-mix(in srgb, var(--danger) 10%, var(--surface)); font-size: var(--fs-14); }
+.tratado .alerta { color: var(--tinta); background: #F6D5CF; border-color: var(--selo); }
+.tratado .selo.verificado { color: #1F6B2A; }
+.tratado .selo.assinado { color: var(--tinta-dim); }
+.tratado .selo.suspeito { color: var(--selo); }
+.codigo { font: 400 var(--fs-28)/1 var(--font-pixel); letter-spacing: 0.08em; }
+.jogadores { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-8); }
+.jogadores li { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-8); padding-block: var(--sp-8); border-top: 1px solid var(--line); }
+.jogadores .quem { min-width: 0; display: flex; flex-direction: column; gap: var(--sp-4); overflow-wrap: anywhere; }
+.jogadores .cod { font: 400 var(--fs-20)/1 var(--font-pixel); letter-spacing: 0.08em; color: var(--text-dim); }
 </style>
 </head>
 <body>
@@ -188,8 +204,8 @@ dialog.sheet::backdrop { background: var(--scrim); }
 <main class="wrap entrada" id="tela-perfil" hidden>
   <span data-ico="pergaminho" class="selo-grande"></span>
   <h2>Embaixada</h2>
-  <p id="perfil-intro">Aqui os times conversam e fecham tratados. Primeiro, quem é você?</p>
-  <form id="form-perfil" class="entrada" style="padding:0" novalidate>
+  <p>Aqui os times conversam e fecham tratados. Primeiro, quem é você?</p>
+  <form id="form-perfil" class="campo" novalidate>
     <div class="campo">
       <label for="p-nome">Seu nome no server</label>
       <input class="txt" id="p-nome" maxlength="24" autocomplete="nickname" placeholder="Ex.: Davi">
@@ -204,18 +220,27 @@ dialog.sheet::backdrop { background: var(--scrim); }
   </form>
 </main>
 
-<!-- Sem sala: criar uma -->
-<main class="wrap entrada" id="tela-criar" hidden>
+<!-- Entrar numa sala ou criar uma -->
+<main class="wrap entrada" id="tela-sala" hidden>
   <span data-ico="pergaminho" class="selo-grande"></span>
-  <h2>Abrir a embaixada</h2>
-  <p>Crie a sala de conversa e mande o convite pro outro time. Só quem tiver o link entra.</p>
-  <button type="button" class="btn btn-primary btn-block" id="btn-criar">Criar sala</button>
+  <h2>Entrar na sala</h2>
   <form class="campo" id="form-entrar" novalidate>
-    <label for="convite">Recebeu um convite? Cole o link ou o nome da sala</label>
-    <input class="txt" id="convite" autocomplete="off" placeholder="embaixada-…">
-    <p class="erro" id="convite-erro" hidden>Esse convite não parece certo. Copie o link inteiro de novo.</p>
-    <button type="submit" class="btn btn-block">Entrar na sala</button>
+    <div class="campo">
+      <label for="convite">Link do convite ou nome da sala</label>
+      <input class="txt" id="convite" autocomplete="off" placeholder="embaixada-…">
+    </div>
+    <div class="campo">
+      <label for="senha">Senha da sala</label>
+      <input class="txt" id="senha" type="password" autocomplete="off" placeholder="Quem criou a sala te passa">
+    </div>
+    <p class="erro" id="entrar-erro" hidden></p>
+    <button type="submit" class="btn btn-primary btn-block">Entrar</button>
   </form>
+  <div class="grupo">
+    <h3>Ou crie uma sala nova</h3>
+    <p class="dica">Use o mesmo campo de senha acima, com pelo menos 8 letras ou números. A senha tranca todas as mensagens: sem ela, ninguém lê nada.</p>
+    <button type="button" class="btn btn-block" id="btn-criar">Criar sala com essa senha</button>
+  </div>
 </main>
 
 <!-- Conversa -->
@@ -225,14 +250,14 @@ dialog.sheet::backdrop { background: var(--scrim); }
       <h1><span data-ico="pergaminho"></span>Embaixada</h1>
       <span class="ao-vivo" id="ao-vivo">conectando</span>
       <button type="button" class="btn-icone" id="btn-tratados" aria-label="Ver tratados"><span data-ico="lista"></span></button>
-      <button type="button" class="btn-icone" id="btn-ajustes" aria-label="Convite e ajustes"><span data-ico="ajustes"></span></button>
+      <button type="button" class="btn-icone" id="btn-ajustes" aria-label="Convite, jogadores e ajustes"><span data-ico="ajustes"></span></button>
     </div>
   </header>
   <main class="wrap conversa" id="conversa" aria-live="polite"></main>
   <div class="barra">
     <form class="wrap" id="form-msg" novalidate>
       <button type="button" class="btn-icone" id="btn-novo-tratado" aria-label="Escrever tratado"><span data-ico="pergaminho"></span></button>
-      <textarea class="txt" id="msg" rows="1" maxlength="1000" placeholder="Mensagem" aria-label="Mensagem"></textarea>
+      <textarea class="txt" id="msg" rows="1" maxlength="800" placeholder="Mensagem" aria-label="Mensagem"></textarea>
       <button type="submit" class="btn btn-primary" id="btn-enviar">Enviar</button>
     </form>
   </div>
@@ -253,7 +278,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
     </div>
     <div class="campo">
       <label for="t-clausulas">Cláusulas (uma por linha)</label>
-      <textarea class="txt" id="t-clausulas" rows="6" maxlength="1500" placeholder="Ninguém ataca a base do outro por 3 dias&#10;O Nether é zona neutra&#10;Quem quebrar paga 10 diamantes"></textarea>
+      <textarea class="txt" id="t-clausulas" rows="6" maxlength="1200" placeholder="Ninguém ataca a base do outro por 3 dias&#10;O Nether é zona neutra&#10;Quem quebrar paga 10 diamantes"></textarea>
     </div>
     <p class="erro" id="t-erro" hidden>Dê um nome e escreva pelo menos uma cláusula.</p>
     <button type="submit" class="btn btn-primary btn-block" id="btn-enviar-tratado">Enviar tratado</button>
@@ -272,16 +297,16 @@ dialog.sheet::backdrop { background: var(--scrim); }
   </div>
 </dialog>
 
-<!-- Convite e ajustes -->
+<!-- Convite, jogadores e ajustes -->
 <dialog class="sheet" id="dlg-ajustes" aria-labelledby="a-titulo">
   <div class="sheet-in">
     <div class="sheet-head">
-      <h2 id="a-titulo">Convite e ajustes</h2>
+      <h2 id="a-titulo">Convite e jogadores</h2>
       <button type="button" class="btn-x" data-fechar aria-label="Fechar"><span data-ico="fechar"></span></button>
     </div>
     <div class="grupo">
       <h3>Convidar</h3>
-      <p class="dica">Mande este link pro outro time e pro seu. Quem tiver o link lê e escreve na sala.</p>
+      <p class="dica">Mande o link. A senha, passe de outro jeito (no jogo ou por áudio), assim quem achar só o link não lê nada.</p>
       <p class="link" id="a-link"></p>
       <div class="duas">
         <a class="btn btn-primary" id="a-whats" target="_blank" rel="noopener" href="https://wa.me/">WhatsApp</a>
@@ -289,8 +314,18 @@ dialog.sheet::backdrop { background: var(--scrim); }
       </div>
     </div>
     <div class="grupo">
+      <h3>Seu código de verificação</h3>
+      <p class="codigo" id="a-codigo">…</p>
+      <p class="dica">Fale esse código pros outros e confira o deles na lista abaixo. Quando bater, toque em Confirmar. Aí ninguém consegue se passar por eles.</p>
+    </div>
+    <div class="grupo">
+      <h3>Jogadores na sala</h3>
+      <ul class="jogadores" id="a-jogadores"></ul>
+      <p class="dica" id="a-jogadores-vazio">Ninguém mandou mensagem ainda.</p>
+    </div>
+    <div class="grupo">
       <h3>Notificações</h3>
-      <p class="dica">Instale o app grátis <strong>ntfy</strong>, toque em + e assine esta sala. Ele avisa cada mensagem nova, mesmo com o celular no bolso.</p>
+      <p class="dica">Instale o app grátis <strong>ntfy</strong>, toque em + e assine a sala abaixo. Ele avisa quando chega mensagem, mas só mostra “Mensagem trancada”: pra ler, abra a Embaixada.</p>
       <p class="sala-nome" id="a-sala"></p>
       <button type="button" class="btn" id="a-copiar-sala">Copiar nome da sala</button>
     </div>
@@ -299,7 +334,7 @@ dialog.sheet::backdrop { background: var(--scrim); }
       <p id="a-perfil"></p>
       <button type="button" class="btn" id="a-editar">Trocar nome ou time</button>
     </div>
-    <p class="dica">O servidor de mensagens guarda cada mensagem por 12 horas. Este celular guarda tudo o que já recebeu, então abra a Embaixada pelo menos uma vez por dia.</p>
+    <p class="dica">O servidor guarda cada mensagem por 12 horas. Este celular guarda tudo o que já recebeu, então abra a Embaixada pelo menos uma vez por dia.</p>
     <button type="button" class="btn btn-perigo" id="a-sair">Sair desta sala</button>
     <button type="button" class="btn btn-perigo" id="a-sair-sim" hidden>Toque de novo pra sair</button>
   </div>
@@ -310,9 +345,16 @@ dialog.sheet::backdrop { background: var(--scrim); }
 'use strict';
 const NTFY = 'https://ntfy.sh';
 const APP_URL = location.origin + location.pathname;
-const CHAVE = { perfil: 'embaixada.perfil.v1', sala: 'embaixada.sala.v1', msgs: s => `embaixada.msgs.v1.${s}` };
-const SEP = ' · ';
+const V = 'v2';
+const CHAVE = {
+  perfil: 'embaixada.perfil.v1',
+  sala: `embaixada.sala.${V}`,
+  msgs: s => `embaixada.msgs.${V}.${s}`,
+  contatos: s => `embaixada.contatos.${V}.${s}`,
+};
 const MAX_GUARDADAS = 600;
+const MAX_BYTES_NTFY = 3900; // acima de 4096 bytes o ntfy vira anexo
+const PREFIXO = 'EMB2:';
 
 const ICONES = {
   pergaminho: ['.########.', '#++++++++#', '.#++++++#.', '.#+####+#.', '.#++++++#.', '.#+###++#.', '.#++++##.#', '.#+++####.', '#+++++###.', '.#######..'],
@@ -332,7 +374,8 @@ function svg(nome) {
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const mesmo = (a, b) => String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+const norm = s => String(s).trim().toLowerCase();
+const mesmo = (a, b) => norm(a) === norm(b);
 function ler(k) { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } }
 function gravar(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sem armazenamento */ } }
 function apagar(k) { try { localStorage.removeItem(k); } catch { /* sem armazenamento */ } }
@@ -343,7 +386,7 @@ function toast(t) {
   el.textContent = t;
   el.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.hidden = true; }, 2600);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 2800);
 }
 async function copiarTexto(t) {
   try { await navigator.clipboard.writeText(t); return true; } catch { /* tenta o jeito antigo */ }
@@ -360,38 +403,108 @@ async function copiarTexto(t) {
   } catch { return false; }
 }
 
+// ---------- Criptografia (Web Crypto do próprio navegador) ----------
+const enc = new TextEncoder(), dec = new TextDecoder();
+const b64 = buf => { let s = ''; for (const b of new Uint8Array(buf)) s += String.fromCharCode(b); return btoa(s); };
+const deB64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+async function hashHex(texto) {
+  const h = new Uint8Array(await crypto.subtle.digest('SHA-256', enc.encode(texto)));
+  return [...h].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+// Código curto pra conferir a chave de alguém de boca: 9 caracteres sem letras parecidas.
+const ALFABETO = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+async function codigoDe(pk) {
+  const h = new Uint8Array(await crypto.subtle.digest('SHA-256', deB64(pk)));
+  const c = [...h.slice(0, 9)].map(b => ALFABETO[b % 32]).join('');
+  return `${c.slice(0, 3)}-${c.slice(3, 6)}-${c.slice(6, 9)}`;
+}
+async function chaveDaSala(senha, salaNome) {
+  const base = await crypto.subtle.importKey('raw', enc.encode(senha), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: enc.encode(`embaixada:${salaNome}`), iterations: 250000, hash: 'SHA-256' },
+    base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function trancar(obj) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const c = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, chaveSala, enc.encode(JSON.stringify(obj))));
+  const tudo = new Uint8Array(iv.length + c.length);
+  tudo.set(iv); tudo.set(c, iv.length);
+  return PREFIXO + b64(tudo);
+}
+async function destrancar(texto) {
+  const i = texto.indexOf(PREFIXO);
+  if (i < 0) return null;
+  const tudo = deB64(texto.slice(i + PREFIXO.length).trim());
+  const claro = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: tudo.slice(0, 12) }, chaveSala, tudo.slice(12));
+  return JSON.parse(dec.decode(claro));
+}
+
+// Chave de assinatura deste celular: a parte secreta não sai do aparelho (fica no IndexedDB, não exportável).
+function abrirBanco() {
+  return new Promise((ok, falha) => {
+    const r = indexedDB.open('embaixada', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('chaves');
+    r.onsuccess = () => ok(r.result);
+    r.onerror = () => falha(r.error);
+  });
+}
+async function bancoLer(k) {
+  const db = await abrirBanco();
+  return new Promise((ok, falha) => { const r = db.transaction('chaves').objectStore('chaves').get(k); r.onsuccess = () => ok(r.result); r.onerror = () => falha(r.error); });
+}
+async function bancoGravar(k, v) {
+  const db = await abrirBanco();
+  return new Promise((ok, falha) => { const t = db.transaction('chaves', 'readwrite'); t.objectStore('chaves').put(v, k); t.oncomplete = () => ok(); t.onerror = () => falha(t.error); });
+}
+let eu = null; // { priv, pk, codigo }
+async function prepararAssinatura() {
+  let par = null;
+  try { par = await bancoLer('assinatura'); } catch { par = null; }
+  if (!par) {
+    par = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign', 'verify']);
+    try { await bancoGravar('assinatura', par); } catch { toast('Este navegador não guarda sua chave. Ela muda se você fechar o app.'); }
+  }
+  const pk = b64(await crypto.subtle.exportKey('spki', par.publicKey));
+  eu = { priv: par.privateKey, pk, codigo: await codigoDe(pk) };
+}
+async function assinar(corpo) {
+  return b64(await crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, eu.priv, enc.encode(corpo)));
+}
+async function conferirAssinatura(corpo, sig, pk) {
+  try {
+    const chave = await crypto.subtle.importKey('spki', deB64(pk), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['verify']);
+    return await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, chave, deB64(sig), enc.encode(corpo));
+  } catch { return false; }
+}
+
 // ---------- Perfil e sala ----------
 let perfil = ler(CHAVE.perfil);
 if (!perfil || typeof perfil.nome !== 'string' || typeof perfil.time !== 'string') perfil = null;
 const SALA_OK = /^[A-Za-z0-9_-]{8,64}$/;
-function salaDoLink() {
-  const m = /[#&]sala=([A-Za-z0-9_-]{8,64})/.exec(location.hash);
-  return m ? m[1] : null;
-}
-let sala = salaDoLink() || ler(CHAVE.sala);
-if (typeof sala !== 'string' || !SALA_OK.test(sala)) sala = null;
-if (salaDoLink()) {
-  gravar(CHAVE.sala, sala);
+let salaInfo = ler(CHAVE.sala); // { sala, senha }
+if (!salaInfo || !SALA_OK.test(salaInfo.sala || '') || typeof salaInfo.senha !== 'string') salaInfo = null;
+let sala = salaInfo ? salaInfo.sala : null;
+let chaveSala = null;
+const salaDoLink = /[#&]sala=([A-Za-z0-9_-]{8,64})/.exec(location.hash);
+const salaAntiga = ler('embaixada.sala.v1');
+if (salaDoLink) {
+  if (!salaInfo || salaInfo.sala !== salaDoLink[1]) { salaInfo = null; sala = null; $('#convite').value = salaDoLink[1]; }
   try { history.replaceState(null, '', location.pathname + location.search); } catch { /* sem histórico */ }
+} else if (!salaInfo && typeof salaAntiga === 'string' && SALA_OK.test(salaAntiga)) {
+  $('#convite').value = salaAntiga;
 }
 const linkConvite = () => `${APP_URL}#sala=${sala}`;
 
-function mostrarTela() {
+async function mostrarTela() {
   $('#tela-perfil').hidden = !!perfil;
-  $('#tela-criar').hidden = !perfil || !!sala;
-  $('#tela-chat').hidden = !perfil || !sala;
-  if (!perfil) {
-    $('#perfil-intro').textContent = sala
-      ? 'Você recebeu um convite pra Embaixada do server. Primeiro, quem é você?'
-      : 'Aqui os times conversam e fecham tratados. Primeiro, quem é você?';
-    $('#p-nome').focus();
-  }
-  if (perfil && sala) iniciarConversa();
+  $('#tela-sala').hidden = !perfil || !!salaInfo;
+  $('#tela-chat').hidden = !perfil || !salaInfo;
+  if (!perfil) $('#p-nome').focus();
+  if (perfil && salaInfo) await iniciarConversa();
 }
 $('#form-perfil').addEventListener('submit', e => {
   e.preventDefault();
-  const nome = $('#p-nome').value.replace(/\s+/g, ' ').trim().replaceAll(SEP.trim(), '');
-  const time = $('#p-time').value.replace(/\s+/g, ' ').trim().replaceAll(SEP.trim(), '');
+  const nome = $('#p-nome').value.replace(/\s+/g, ' ').trim();
+  const time = $('#p-time').value.replace(/\s+/g, ' ').trim();
   $('#p-erro').hidden = !!(nome && time);
   if (!nome || !time) return;
   perfil = { nome, time };
@@ -399,89 +512,128 @@ $('#form-perfil').addEventListener('submit', e => {
   mostrarTela();
   render();
 });
-$('#form-entrar').addEventListener('submit', e => {
+function erroEntrar(t) { const el = $('#entrar-erro'); el.textContent = t; el.hidden = !t; }
+async function entrar(nomeSala, senha) {
+  salaInfo = { sala: nomeSala, senha };
+  sala = nomeSala;
+  gravar(CHAVE.sala, salaInfo);
+  await mostrarTela();
+}
+$('#form-entrar').addEventListener('submit', async e => {
   e.preventDefault();
   const txt = $('#convite').value.trim();
   const m = /sala=([A-Za-z0-9_-]{8,64})/.exec(txt);
-  const nova = m ? m[1] : (SALA_OK.test(txt) ? txt : null);
-  $('#convite-erro').hidden = !!nova;
-  if (!nova) return;
-  sala = nova;
-  gravar(CHAVE.sala, sala);
-  mostrarTela();
+  const nomeSala = m ? m[1] : (SALA_OK.test(txt) ? txt : null);
+  const senha = $('#senha').value;
+  if (!nomeSala) return erroEntrar('Esse convite não parece certo. Copie o link inteiro de novo.');
+  if (!senha) return erroEntrar('Digite a senha da sala.');
+  erroEntrar('');
+  await entrar(nomeSala, senha);
 });
-$('#btn-criar').addEventListener('click', () => {
-  const bytes = new Uint8Array(12);
-  crypto.getRandomValues(bytes);
-  sala = `embaixada-${[...bytes].map(b => (b % 36).toString(36)).join('')}`;
-  gravar(CHAVE.sala, sala);
-  mostrarTela();
+$('#btn-criar').addEventListener('click', async () => {
+  const senha = $('#senha').value;
+  if (senha.length < 8) { erroEntrar('Pra criar a sala, escreva uma senha com pelo menos 8 letras ou números no campo Senha.'); $('#senha').focus(); return; }
+  erroEntrar('');
+  const bytes = crypto.getRandomValues(new Uint8Array(12));
+  await entrar(`embaixada-${[...bytes].map(b => (b % 36).toString(36)).join('')}`, senha);
   abrirAjustes();
 });
 
+// ---------- Contatos: a chave de cada jogador (guardada na primeira vez que ele aparece) ----------
+let contatos = {};
+const chaveContato = (nome, time) => `${norm(nome)}|${norm(time)}`;
+function guardarContatos() { gravar(CHAVE.contatos(sala), contatos); }
+function selo(m) {
+  if (m.pk === eu.pk) return 'verificado';
+  if (perfil && mesmo(m.nome, perfil.nome) && mesmo(m.time, perfil.time)) return 'suspeito';
+  const c = contatos[chaveContato(m.nome, m.time)];
+  if (!c) return 'assinado';
+  if (c.pk !== m.pk) return 'suspeito';
+  return c.confirmado ? 'verificado' : 'assinado';
+}
+const ROTULO_SELO = { verificado: 'Verificado', assinado: 'Assinado', suspeito: 'Suspeito' };
+
 // ---------- Mensagens ----------
-// Formato no ntfy: título "Nome · Time"; tags dizem o tipo (tratado, aceito, recusado, re-<id>).
-let msgs = new Map();
+// No ntfy vai só "Mensagem trancada" + o texto criptografado. Dentro dele: corpo assinado + assinatura.
+let msgs = new Map(), trancadas = 0;
+const vistos = new Set();
 function carregarMsgs() {
   msgs = new Map();
-  const salvas = sala ? ler(CHAVE.msgs(sala)) : null;
+  const salvas = ler(CHAVE.msgs(sala));
   if (Array.isArray(salvas)) for (const m of salvas) if (m && typeof m.id === 'string') msgs.set(m.id, m);
+  contatos = ler(CHAVE.contatos(sala)) || {};
 }
 function guardarMsgs() {
-  const lista = [...msgs.values()].sort((a, b) => a.em - b.em).slice(-MAX_GUARDADAS);
-  gravar(CHAVE.msgs(sala), lista);
+  gravar(CHAVE.msgs(sala), [...msgs.values()].sort((a, b) => a.em - b.em).slice(-MAX_GUARDADAS));
 }
-function lerEvento(ev) {
-  if (!ev || ev.event !== 'message' || typeof ev.id !== 'string') return null;
-  const titulo = typeof ev.title === 'string' ? ev.title : '';
-  const corte = titulo.lastIndexOf(SEP);
-  const nome = (corte >= 0 ? titulo.slice(0, corte) : titulo).trim() || 'Alguém';
-  const time = corte >= 0 ? titulo.slice(corte + SEP.length).trim() : '';
-  const tags = Array.isArray(ev.tags) ? ev.tags.map(String) : [];
-  const texto = typeof ev.message === 'string' ? ev.message : '';
-  const base = { id: ev.id, em: (Number(ev.time) || 0) * 1000, nome: nome.slice(0, 40), time: time.slice(0, 40), texto: texto.slice(0, 4000) };
-  if (tags.includes('tratado')) {
-    const linhas = texto.split('\n').map(l => l.trim()).filter(Boolean);
-    return { ...base, tipo: 'tratado', titulo: (linhas[0] || 'Tratado').slice(0, 80), clausulas: linhas.slice(1).map(l => l.replace(/^\d+[.)]\s*/, '')).slice(0, 20) };
-  }
-  const re = tags.find(t => t.startsWith('re-'));
-  if (re && (tags.includes('aceito') || tags.includes('recusado'))) return { ...base, tipo: tags.includes('aceito') ? 'aceito' : 'recusado', re: re.slice(3) };
-  return { ...base, tipo: 'msg' };
-}
-function receber(ev) {
-  const m = lerEvento(ev);
-  if (!m || msgs.has(m.id)) return false;
-  msgs.set(m.id, m);
+async function receber(ev) {
+  if (!ev || ev.event !== 'message' || typeof ev.message !== 'string' || vistos.has(ev.id)) return false;
+  vistos.add(ev.id);
+  let pacote;
+  try { pacote = await destrancar(ev.message); } catch { trancadas++; return false; }
+  if (!pacote || typeof pacote.c !== 'string' || typeof pacote.s !== 'string') return false;
+  let campos;
+  try { campos = JSON.parse(pacote.c); } catch { return false; }
+  if (!Array.isArray(campos) || campos[0] !== 2) return false;
+  const [, nome, time, tipo, texto, titulo, clausulas, re, em, pk] = campos;
+  if (typeof pk !== 'string' || !(await conferirAssinatura(pacote.c, pacote.s, pk))) return false;
+  const id = (await hashHex(pacote.s)).slice(0, 16); // a mesma mensagem reenviada vira a mesma
+  if (msgs.has(id)) return false;
+  const m = {
+    id, pk,
+    nome: String(nome || 'Alguém').slice(0, 40), time: String(time || '').slice(0, 40),
+    tipo: ['msg', 'tratado', 'aceito', 'recusado'].includes(tipo) ? tipo : 'msg',
+    texto: String(texto || '').slice(0, 1000), titulo: String(titulo || '').slice(0, 80),
+    clausulas: Array.isArray(clausulas) ? clausulas.map(c => String(c).slice(0, 300)).slice(0, 20) : [],
+    re: typeof re === 'string' ? re.slice(0, 16) : '',
+    em: Number.isFinite(em) ? em : (Number(ev.time) || 0) * 1000,
+  };
+  const k = chaveContato(m.nome, m.time);
+  if (!contatos[k] && m.pk !== eu.pk) { contatos[k] = { pk: m.pk, nome: m.nome, time: m.time, confirmado: false }; guardarContatos(); }
+  msgs.set(id, m);
   return true;
+}
+async function receberVarios(eventos) {
+  let novas = false;
+  for (const ev of eventos) if (await receber(ev)) novas = true;
+  if (novas) { guardarMsgs(); render(); }
+  avisoTrancadas();
+}
+function avisoTrancadas() {
+  if (trancadas && !msgs.size) toast('Não consegui abrir as mensagens desta sala. A senha está certa? Saia da sala e entre de novo.');
 }
 const doMeuTime = m => perfil && mesmo(m.time, perfil.time);
 function situacao(t) {
-  // Vale a última resposta de alguém de outro time.
   let s = 'pendente';
   for (const m of [...msgs.values()].sort((a, b) => a.em - b.em)) {
-    if ((m.tipo === 'aceito' || m.tipo === 'recusado') && m.re === t.id && !mesmo(m.time, t.time)) s = m.tipo;
+    if ((m.tipo === 'aceito' || m.tipo === 'recusado') && m.re === t.id && !mesmo(m.time, t.time) && selo(m) !== 'suspeito') s = m.tipo;
   }
   return s;
 }
 const hora = ms => new Date(ms).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 const ROTULO = { pendente: 'Aguardando', aceito: 'Aceito', recusado: 'Recusado' };
+function alertaHTML(m) {
+  return `<div class="alerta"><span><strong>Cuidado:</strong> essa mensagem diz ser de ${esc(m.nome)}, mas veio de outro celular. Pode ser alguém se passando por ele.</span>
+<button type="button" class="btn" data-confiar="${esc(m.id)}">É ele mesmo, trocou de celular</button></div>`;
+}
 
 function htmlMsg(m) {
-  const minha = doMeuTime(m);
-  const autor = `<span class="autor">${esc(m.nome)}${m.time ? ` <span class="time">${esc(m.time)}</span>` : ''}</span>`;
+  const minha = doMeuTime(m), s = selo(m);
+  const seloHTML = `<span class="selo ${s}">${ROTULO_SELO[s]}</span>`;
   if (m.tipo === 'aceito' || m.tipo === 'recusado') {
     const t = msgs.get(m.re);
-    return `<p class="aviso-linha ${m.tipo}">${esc(m.nome)} ${m.tipo === 'aceito' ? 'aceitou' : 'recusou'} o tratado “${esc(t ? t.titulo : 'antigo')}” · ${hora(m.em)}</p>`;
+    return `<p class="aviso-linha ${s === 'suspeito' ? 'recusado' : m.tipo}">${esc(m.nome)} ${m.tipo === 'aceito' ? 'aceitou' : 'recusou'} o tratado “${esc(t ? t.titulo : 'antigo')}” · ${hora(m.em)}${s === 'suspeito' ? ' · SUSPEITO' : ''}</p>`;
   }
   if (m.tipo === 'tratado') {
-    const s = situacao(m);
-    const podeResponder = !minha && s === 'pendente';
+    const st = situacao(m);
+    const podeResponder = !minha && st === 'pendente' && s !== 'suspeito';
     return `<article class="tratado" id="t-${esc(m.id)}">
 <span class="rotulo">Tratado</span>
 <h3>${esc(m.titulo)}</h3>
 ${m.clausulas.length ? `<ol>${m.clausulas.map(c => `<li>${esc(c)}</li>`).join('')}</ol>` : ''}
 <p class="assinatura">Proposto por ${esc(m.nome)}${m.time ? ` (${esc(m.time)})` : ''} · ${hora(m.em)}</p>
-<span class="situacao ${s}">${ROTULO[s]}</span>
+<div class="selos"><span class="situacao ${st}">${ROTULO[st]}</span>${seloHTML}</div>
+${s === 'suspeito' ? alertaHTML(m) : ''}
 ${podeResponder ? `<div class="acoes">
 <button type="button" class="btn btn-aceitar" data-responder="aceito" data-id="${esc(m.id)}">Aceitar</button>
 <button type="button" class="btn" data-responder="recusado" data-id="${esc(m.id)}">Recusar</button>
@@ -489,46 +641,51 @@ ${podeResponder ? `<div class="acoes">
 </div>` : ''}
 </article>`;
   }
-  return `<div class="msg${minha ? ' minha' : ''}">${autor}<p class="balao">${esc(m.texto)}</p><span class="hora">${hora(m.em)}</span></div>`;
+  const autor = `<span class="autor">${esc(m.nome)}${m.time ? ` <span class="time">${esc(m.time)}</span>` : ''}</span>`;
+  return `<div class="msg${minha ? ' minha' : ''}">${autor}<p class="balao">${esc(m.texto)}</p>${s === 'suspeito' ? alertaHTML(m) : ''}<span class="selos"><span class="hora">${hora(m.em)}</span>${seloHTML}</span></div>`;
 }
 function render() {
-  if (!perfil || !sala) return;
+  if (!perfil || !salaInfo || !eu) return;
   const lista = [...msgs.values()].sort((a, b) => a.em - b.em);
-  const conv = $('#conversa');
   const noFim = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 80;
-  conv.innerHTML = lista.length
+  $('#conversa').innerHTML = lista.length
     ? lista.map(htmlMsg).join('')
-    : `<div class="vazio"><h3>Sala aberta</h3><p class="dica">Mande um “salve” pro outro time ou proponha um tratado no pergaminho aqui embaixo. Convide o pessoal pelo botão de ajustes.</p></div>`;
+    : `<div class="vazio"><h3>Sala trancada e aberta</h3><p class="dica">Tudo aqui sai criptografado com a senha da sala e assinado pelo seu celular. Mande um “salve” ou proponha um tratado no pergaminho aqui embaixo.</p></div>`;
   if (noFim) window.scrollTo(0, document.documentElement.scrollHeight);
   const tratados = lista.filter(m => m.tipo === 'tratado').reverse();
   $('#lista-tratados').innerHTML = tratados.map(t => {
-    const s = situacao(t);
-    return `<li><button type="button" data-ir="${esc(t.id)}"><span class="t">${esc(t.titulo)}</span><span class="s ${s}">${ROTULO[s]}</span></button></li>`;
+    const st = situacao(t);
+    return `<li><button type="button" data-ir="${esc(t.id)}"><span class="t">${esc(t.titulo)}</span><span class="s ${st}">${ROTULO[st]}</span></button></li>`;
   }).join('');
   $('#lista-vazia').hidden = tratados.length > 0;
 }
 
 // ---------- Ligação com o ntfy ----------
-async function publicar(texto, tags) {
+async function publicar(dados) {
+  const campos = [2, perfil.nome, perfil.time, dados.tipo, dados.texto || '', dados.titulo || '', dados.clausulas || [], dados.re || '', Date.now(), eu.pk];
+  const corpo = JSON.stringify(campos);
+  const mensagem = `Mensagem trancada. Abra a Embaixada pra ler.\n\n${await trancar({ c: corpo, s: await assinar(corpo) })}`;
+  if (enc.encode(mensagem).length > MAX_BYTES_NTFY) throw new Error('longa');
   const res = await fetch(`${NTFY}/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ topic: sala, title: `${perfil.nome}${SEP}${perfil.time}`, message: texto, tags, click: linkConvite() }),
+    body: JSON.stringify({ topic: sala, title: 'Embaixada', message: mensagem, tags: ['lock'], click: linkConvite() }),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const ev = await res.json();
-  if (receber(ev)) { guardarMsgs(); render(); window.scrollTo(0, document.documentElement.scrollHeight); }
+  await receberVarios([await res.json()]);
+  window.scrollTo(0, document.documentElement.scrollHeight);
 }
+const erroEnvio = err => toast(err && err.message === 'longa' ? 'Mensagem longa demais. Divida em duas.' : 'Não deu pra enviar. Confira a internet.');
 async function buscarTudo() {
   try {
     const res = await fetch(`${NTFY}/${sala}/json?poll=1&since=all`, { cache: 'no-store' });
     if (!res.ok) return;
-    let novas = false;
+    const eventos = [];
     for (const linha of (await res.text()).split('\n')) {
       if (!linha.trim()) continue;
-      try { if (receber(JSON.parse(linha))) novas = true; } catch { /* linha ruim */ }
+      try { eventos.push(JSON.parse(linha)); } catch { /* linha ruim */ }
     }
-    if (novas) { guardarMsgs(); render(); }
+    await receberVarios(eventos);
   } catch { /* sem internet: mostra o que já tem */ }
 }
 let fonte = null, iniciada = false;
@@ -539,22 +696,27 @@ function conectar() {
     fonte = new EventSource(`${NTFY}/${sala}/sse`);
     fonte.onopen = () => { status.textContent = 'ao vivo'; status.classList.add('on'); };
     fonte.onerror = () => { status.textContent = 'reconectando'; status.classList.remove('on'); };
-    fonte.onmessage = e => {
-      try { if (receber(JSON.parse(e.data))) { guardarMsgs(); render(); } } catch { /* evento ruim */ }
-    };
+    fonte.onmessage = e => { try { receberVarios([JSON.parse(e.data)]); } catch { /* evento ruim */ } };
   } catch { status.textContent = 'sem conexão'; }
 }
-function iniciarConversa() {
+async function iniciarConversa() {
   if (iniciada) return;
   iniciada = true;
+  try {
+    if (!eu) await prepararAssinatura();
+    chaveSala = await chaveDaSala(salaInfo.senha, sala);
+  } catch {
+    toast('Este navegador não tem criptografia. Atualize o Chrome.');
+    return;
+  }
   carregarMsgs();
   render();
   window.scrollTo(0, document.documentElement.scrollHeight);
-  buscarTudo();
+  await buscarTudo();
   conectar();
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && iniciada) { buscarTudo(); if (!fonte || fonte.readyState === 2) conectar(); }
+  if (document.visibilityState === 'visible' && iniciada && chaveSala) { buscarTudo(); if (!fonte || fonte.readyState === 2) conectar(); }
 });
 
 // ---------- Enviar ----------
@@ -563,14 +725,14 @@ campoMsg.addEventListener('input', () => { campoMsg.style.height = 'auto'; campo
 $('#form-msg').addEventListener('submit', async e => {
   e.preventDefault();
   const texto = campoMsg.value.trim();
-  if (!texto) return;
+  if (!texto || !chaveSala) return;
   const botao = $('#btn-enviar');
   botao.disabled = true;
   try {
-    await publicar(texto, []);
+    await publicar({ tipo: 'msg', texto });
     campoMsg.value = '';
     campoMsg.style.height = '';
-  } catch { toast('Não deu pra enviar. Confira a internet.'); }
+  } catch (err) { erroEnvio(err); }
   finally { botao.disabled = false; }
 });
 campoMsg.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && window.matchMedia('(pointer: fine)').matches) { e.preventDefault(); $('#form-msg').requestSubmit(); } });
@@ -594,26 +756,31 @@ $('#form-tratado').addEventListener('submit', async e => {
   const botao = $('#btn-enviar-tratado');
   botao.disabled = true;
   try {
-    await publicar([titulo, ...clausulas.map((c, i) => `${i + 1}. ${c}`)].join('\n'), ['scroll', 'tratado']);
+    await publicar({ tipo: 'tratado', titulo, clausulas });
     dlgTratado.close();
-  } catch { toast('Não deu pra enviar o tratado. Confira a internet.'); }
+  } catch (err) { erroEnvio(err); }
   finally { botao.disabled = false; }
 });
 $('#conversa').addEventListener('click', async e => {
-  const r = e.target.closest('[data-responder]');
+  const confiar = e.target.closest('[data-confiar]');
+  if (confiar) {
+    const m = msgs.get(confiar.dataset.confiar);
+    if (m) { contatos[chaveContato(m.nome, m.time)] = { pk: m.pk, nome: m.nome, time: m.time, confirmado: false }; guardarContatos(); render(); toast(`Agora o app confia no celular novo de ${m.nome}. Confira o código dele.`); }
+    return;
+  }
   const c = e.target.closest('[data-contra]');
   if (c) { const t = msgs.get(c.dataset.contra); if (t) abrirTratado(t); return; }
+  const r = e.target.closest('[data-responder]');
   if (!r) return;
   const t = msgs.get(r.dataset.id);
   if (!t) return;
   const aceito = r.dataset.responder === 'aceito';
   r.disabled = true;
-  try {
-    await publicar(`${aceito ? 'Aceitou' : 'Recusou'} o tratado: ${t.titulo}`, [aceito ? 'handshake' : 'x', aceito ? 'aceito' : 'recusado', `re-${t.id}`]);
-  } catch { r.disabled = false; toast('Não deu pra responder. Confira a internet.'); }
+  try { await publicar({ tipo: aceito ? 'aceito' : 'recusado', re: t.id }); }
+  catch (err) { r.disabled = false; erroEnvio(err); }
 });
 
-// ---------- Tratados e ajustes ----------
+// ---------- Tratados, convite e jogadores ----------
 const dlgLista = $('#dlg-lista'), dlgAjustes = $('#dlg-ajustes');
 $('#btn-tratados').addEventListener('click', () => dlgLista.showModal());
 $('#lista-tratados').addEventListener('click', e => {
@@ -623,16 +790,33 @@ $('#lista-tratados').addEventListener('click', e => {
   const alvo = document.getElementById(`t-${b.dataset.ir}`);
   if (alvo) alvo.scrollIntoView({ block: 'center' });
 });
-function abrirAjustes() {
+async function renderJogadores() {
+  const lista = Object.entries(contatos);
+  $('#a-jogadores-vazio').hidden = lista.length > 0;
+  const linhas = await Promise.all(lista.map(async ([k, c]) => `<li><span class="quem"><strong>${esc(c.nome)}</strong><span class="dica">${esc(c.time)}</span><span class="cod">${await codigoDe(c.pk)}</span></span>
+${c.confirmado ? '<span class="selo verificado">Verificado</span>' : `<button type="button" class="btn" data-confirmar="${esc(k)}">Confirmar</button>`}</li>`));
+  $('#a-jogadores').innerHTML = linhas.join('');
+}
+async function abrirAjustes() {
   $('#a-link').textContent = linkConvite();
-  $('#a-whats').href = `https://wa.me/?text=${encodeURIComponent(`Bora negociar? Entra na Embaixada do server: ${linkConvite()}`)}`;
+  $('#a-whats').href = `https://wa.me/?text=${encodeURIComponent(`Bora negociar? Entra na Embaixada do server: ${linkConvite()} (a senha eu te passo por fora)`)}`;
   $('#a-sala').textContent = sala;
   $('#a-perfil').textContent = `${perfil.nome} · ${perfil.time}`;
+  $('#a-codigo').textContent = eu ? eu.codigo : '…';
   $('#a-sair').hidden = false;
   $('#a-sair-sim').hidden = true;
+  await renderJogadores();
   if (!dlgAjustes.open) dlgAjustes.showModal();
 }
 $('#btn-ajustes').addEventListener('click', abrirAjustes);
+$('#a-jogadores').addEventListener('click', async e => {
+  const b = e.target.closest('[data-confirmar]');
+  if (!b || !contatos[b.dataset.confirmar]) return;
+  contatos[b.dataset.confirmar].confirmado = true;
+  guardarContatos();
+  await renderJogadores();
+  render();
+});
 $('#a-copiar').addEventListener('click', async e => { const b = e.currentTarget; b.textContent = (await copiarTexto(linkConvite())) ? 'Copiado!' : 'Não deu'; setTimeout(() => { b.textContent = 'Copiar link'; }, 1500); });
 $('#a-copiar-sala').addEventListener('click', async e => { const b = e.currentTarget; b.textContent = (await copiarTexto(sala)) ? 'Copiado!' : 'Não deu'; setTimeout(() => { b.textContent = 'Copiar nome da sala'; }, 1500); });
 $('#a-editar').addEventListener('click', () => {
@@ -648,8 +832,10 @@ $('#a-sair-sim').addEventListener('click', () => {
   dlgAjustes.close();
   if (fonte) fonte.close();
   apagar(CHAVE.sala);
-  sala = null;
-  iniciada = false;
+  $('#convite').value = sala || '';
+  $('#senha').value = '';
+  salaInfo = null; sala = null; chaveSala = null;
+  iniciada = false; trancadas = 0; vistos.clear();
   msgs = new Map();
   mostrarTela();
 });

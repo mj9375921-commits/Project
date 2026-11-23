@@ -8,10 +8,9 @@
 - `docs/server/` é o app ResenhaCraft: mostra se o server (Bedrock, Aternos) está online. Usa as APIs
   api.mcstatus.io e api.mcsrvstat.us. Bedrock não informa os nomes dos jogadores, só quantos estão on.
 - `docs/embaixada/` é o app Embaixada: conversa e tratados entre os times, pelo ntfy.sh (mensagens ficam 12 h lá).
-  O dono pede: "manda pro Davi uma proposta". Escreva o tratado e, só depois que ele aprovar o texto, publique:
-  `POST https://ntfy.sh/` com JSON `{"topic": "<sala>", "title": "<nome> · <time>", "message": "<título>\n1. ...\n2. ...",
-  "tags": ["scroll", "tratado"], "click": "https://mj9375921-commits.github.io/Project/embaixada/#sala=<sala>"}`.
-  A sala não fica no repositório (ele é público). Peça o link da sala ao dono.
+  As mensagens são criptografadas com a senha da sala (AES-GCM) e assinadas pela chave do celular (ECDSA).
+  O Claude não consegue postar: quando o dono pedir uma proposta, escreva o título e as cláusulas pra ele colar no app.
+  Nunca guarde sala ou senha no repositório: ele é público.
 - `android-embaixada/` gera o APK da Embaixada (Capacitor abre o site do GitHub Pages). O workflow
   `.github/workflows/apk-embaixada.yml` monta e publica em Releases a cada push nessa pasta.
   Nunca coloque chave de assinatura no repositório: ele é público.
